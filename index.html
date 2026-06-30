@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ANS Ledger System - Pro UI (Perfected Edition)</title>
+    
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --color-blue: #007AFF;
+            --color-red: #FF3B30;
+            --color-green: #34C759;
+            --color-gold: #D4AF37;       
+            --color-gold-dark: #B8860B;
+            --color-black: #1C1C1E;
+            --color-gray: #8E8E93;
+            
+            --glass-bg: rgba(255, 255, 255, 0.15); 
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            --font-main: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-main); -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            color: var(--color-black); line-height: 1.5; padding: 20px 10px; min-height: 100vh; 
+            position: relative; overflow-x: hidden; 
+            background: linear-gradient(-45deg, #e2d1f9, #a3c9f5, #b8d4fe, #d4f0ff);
+            background-size: 400% 400%;
+            animation: waveWater 15s ease infinite;
+        }
+
+        @keyframes waveWater { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 1; padding-bottom: 80px; }
+        
+        .card { 
+            background: var(--glass-bg); border-radius: 24px; padding: 20px; 
+            box-shadow: var(--glass-shadow); 
+            backdrop-filter: blur(8px) saturate(150%); -webkit-backdrop-filter: blur(8px) saturate(150%); 
+            border: 1px solid var(--glass-border); transition: transform 0.3s ease;
+        }
+
+        .grid-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-weight: 800; font-size: 0.9rem; color: #2C2C2E; display: flex; align-items: center; justify-content: space-between; text-shadow: 0 1px 3px rgba(255,255,255,0.9); }
+        
+        input[type="text"], input[type="number"], input[type="date"], select {
+            width: 100%; padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 12px; font-size: 1.05rem; color: var(--color-black);
+            outline: none; transition: all 0.3s ease; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02); font-weight: 700;
+        }
+        input:focus, select:focus { border-color: var(--color-blue); background: rgba(255, 255, 255, 0.8); box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15); }
+        .input-lg { font-size: 1.25rem; font-weight: 900; text-align: center; }
+
+        .btn-enter { 
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.9), rgba(0, 86, 179, 0.9)); 
+            color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 12px; 
+            font-weight: 800; font-size: 1.15rem; height: 48px; width: 100%; 
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3); transition: all 0.2s ease; 
+        }
+        .btn-enter:active { transform: scale(0.96); }
+
+        .formula-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; padding: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.3); }
+        .formula-btn { background: rgba(255, 255, 255, 0.25); border: 1px solid rgba(255,255,255,0.6); color: #004080; padding: 8px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.04); }
+        .formula-btn:hover { background: rgba(255, 255, 255, 0.5); }
+        .formula-btn:active { transform: scale(0.94); }
+
+        /* Compact Table Styles */
+        .entries-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .entries-title { color: var(--color-blue); font-size: 1.2rem; font-weight: 900; }
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-box { background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255,255,255,0.8); border-radius: 10px; padding: 8px 12px; font-size: 0.85rem; color: var(--color-black); cursor: pointer; font-weight: 800; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.04); }
+        .btn-box-red { background: linear-gradient(135deg, rgba(255, 59, 48, 0.9), rgba(215, 0, 21, 0.9)); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-box:active { transform: scale(0.95); }
+
+        .table-responsive { width: 100%; max-height: 400px; overflow-y: auto; overflow-x: hidden; position: relative; border-radius: 10px; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.1); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead th { position: sticky; top: 0; background: rgba(240, 245, 255, 0.95); z-index: 10; padding: 10px 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        th { color: #2C2C2E; font-weight: 800; font-size: 0.9rem; }
+        td { padding: 10px 5px; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle; }
+        
+        .col-num { color: var(--color-blue); font-weight: 900; font-size: 1.1rem; width: 20%; }
+        .col-total { color: var(--color-black); font-weight: 900; font-size: 1.05rem; width: 30%; }
+        .tags-wrapper { display: flex; flex-wrap: wrap; gap: 5px; }
+        .detail-tag { display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 8px; font-size: 0.9rem; font-weight: 800; background: rgba(255,255,255,0.5); }
+        .del-cross { color: var(--color-red); margin-left: 8px; font-weight: 900; cursor: pointer; border: none; background: none; opacity: 0.7; }
+        
+        .footer-row td { font-weight: 900; font-size: 1.1rem; padding-top: 15px; border-bottom: none; position: sticky; bottom: 0; background: rgba(240, 245, 255, 0.95); box-shadow: 0 -1px 3px rgba(0,0,0,0.05);}
+        .text-red { color: var(--color-red) !important; }
+        .text-blue { color: var(--color-blue) !important; }
+        .text-green { color: var(--color-green) !important; }
+        .hidden { display: none !important; }
+
+        .receipt-input { width: 100px; background: transparent !important; border: none !important; border-bottom: 1px dashed rgba(0,0,0,0.2) !important; border-radius: 0 !important; color: inherit !important; font-size: 1.1rem; font-weight: 900; text-align: right; padding: 2px 0 !important; margin: 0; outline: none; }
+        
+        /* History Section */
+        .history-box { background: rgba(0, 122, 255, 0.08); border: 1px dashed rgba(0, 122, 255, 0.3); padding: 12px; border-radius: 12px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .history-text { font-size: 0.95rem; font-weight: 800; color: var(--color-blue); }
+        
+        /* Floating Scroll Button */
+        #btnScrollBottom { position: absolute; bottom: 65px; right: 20px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 20px; padding: 6px 12px; font-size: 0.85rem; font-weight: bold; cursor: pointer; z-index: 20; backdrop-filter: blur(5px); transition: 0.3s; }
+        #btnScrollBottom:active { transform: scale(0.9); }
+
+        /* Floating Info Panel */
+        .fab-help { position: fixed; bottom: 20px; right: 20px; z-index: 10001; background: var(--color-blue); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; box-shadow: 0 5px 15px rgba(0,122,255,0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .info-panel { position: fixed; bottom: 80px; right: 20px; z-index: 10000; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px); border-radius: 20px; width: 340px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); transform: translateY(20px) scale(0.9); opacity: 0; pointer-events: none; transition: 0.3s; max-height: 75vh; display: flex; flex-direction: column; }
+        @media (max-width: 400px) { .info-panel { width: 90%; left: 5%; right: 5%; } }
+        .info-panel.active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        .info-header { padding: 15px; font-weight: bold; color: var(--color-blue); border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; }
+        .info-close { background: none; border: none; font-size: 1.3rem; color: var(--color-gray); cursor: pointer; }
+        .info-content { padding: 15px; overflow-y: auto; font-size: 0.9rem; line-height: 1.6; }
+        .info-content h4 { color: var(--color-black); margin: 10px 0 5px 0; font-size: 0.95rem; }
+        .info-content code { background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-family: monospace; }
+        .info-content ul { padding-left: 20px; margin-bottom: 15px; }
+        .info-content li { margin-bottom: 6px; }
+
+        .export-area { position: relative; background: rgba(255, 255, 255, 0.4); border-radius: 16px; overflow: hidden; padding: 10px; transition: 0.3s; }
+        .export-watermark { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 0; pointer-events: none; }
+        .export-watermark span { font-size: 12vw; font-weight: 900; color: rgba(212, 175, 55, 0.12); transform: rotate(-30deg); letter-spacing: 12px; }
+        @media (max-width: 600px) { .export-watermark span { font-size: 5rem; } }
+
+        /* Compact Export CSS (Hidden Details & Clean UI for Image) */
+        .exporting .hide-on-export { display: none !important; }
+        .exporting td, .exporting th { padding: 6px 5px !important; border-bottom: 1px solid rgba(0,0,0,0.05) !important; }
+        .exporting .col-num { width: 50% !important; font-size: 1.2rem !important; }
+        .exporting .col-total { width: 50% !important; font-size: 1.2rem !important; }
+        .exporting .receipt-input { border-bottom: none !important; font-size: 1.1rem !important; }
+    </style>
+</head>
+<body>
+
+    <button class="fab-help" id="btnOpenHelp">💡</button>
+
+    <div class="info-panel" id="helpModal">
+        <div class="info-header">💡 အသုံးပြုနည်း လမ်းညွှန် <button class="info-close" id="btnCloseHelp">✕</button></div>
+        <div class="info-content">
+            <h4>📝 အမြန်ရိုက်သွင်းနည်း (Amount Input)</h4>
+            <ul>
+                <li>ဂဏန်းနှင့် ပမာဏကို ကွက်လပ်ခြားရိုက်ပါ။ <br>ဥပမာ: <code>12 13 14 500</code></li>
+                <li><strong>အပြန် (r)</strong> ပါလျှင်: <code>12 500r</code> (၁၂၊ ၂၁ ၅၀၀ဖိုးစီ)</li>
+                <li><strong>တည့်/အပြန် မတူလျှင်:</strong> <code>12 500r300</code> (၁၂ ၅၀၀ဖိုး၊ ၂၁ ၃၀၀ဖိုး)</li>
+            </ul>
+
+            <h4>📐 ဖော်မြူလာများ (Shortcut Keys)</h4>
+            <ul>
+                <li><strong>h (ထိပ်)</strong>: <code>1h</code> လို့ရိုက်လျှင် (၁၀ မှ ၁၉)</li>
+                <li><strong>t (နောက်)</strong>: <code>1t</code> လို့ရိုက်လျှင် (၀၁, ၁၁... ၉၁)</li>
+                <li><strong>b (ဘရိတ်)</strong>: <code>5b</code> (၅ ဘရိတ်), <code>57b</code> (၅ နဲ့ ၇ ဘရိတ် နှစ်မျိုးလုံး)</li>
+                <li><strong>p (အပတ်)</strong>:<br>
+                    <code>1p19</code> (သို့) <code>1p</code> (၁ အပတ် ၁၉ကွက် အပူးပါ)<br>
+                    <code>1p18</code> (၁ အပတ် ၁၈ကွက် အပူးမပါ)<br>
+                    <code>1p20</code> (၁၁ နှစ်ခါပါ ၂၀ကွက်)
+                </li>
+                <li><strong>k (အခွေ)</strong>:<br>
+                    <code>123k</code> (ရိုးရိုးခွေ ၆ ကွက်)<br>
+                    <code>123k+</code> (အပူးပါခွေ ၉ ကွက်)
+                </li>
+                <li><strong>ပါဝါ / နက္ခတ် / ညီကို / အပူး:</strong> <br><code>pw</code>, <code>nk</code>, <code>br</code>, <code>++</code></li>
+                <li><strong>mu (မူး)</strong>: သုညတစ်လုံးပါ ဂဏန်းများအားလုံး</li>
+                <li><strong>စုံ/မ စနစ်များ:</strong> <code>ss</code> (စုံစုံ), <code>mm</code> (မမ), <code>sm</code> (စုံမ), <code>ms</code> (မစုံ)</li>
+            </ul>
+
+            <h4>⚠️ ရှယ်ယာ (Share Rate) မှတ်သားရန်</h4>
+            <ul>
+                <li>တွက်ချက်မှုတွင် <strong>အရှုံးပေါ်နေပါက</strong> ရှယ်ယာငွေသည်လည်း အနှုတ် (Negative) ဖြစ်သွားပါမည်။ ယင်းမှာ <strong>"အရှုံးကိုပါ ရာခိုင်နှုန်းအတိုင်း အတူတူကျခံရခြင်း"</strong> သဘောတရားဖြစ်၍ စာရင်းဇယားအရ လုံးဝမှန်ကန်ပါသည်။</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="grid-row">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>ကိုယ်စားလှယ်</label><input type="text" id="agentName" placeholder="အမည် ထည့်ပါ">
+                </div>
+                <div class="form-group"><label>ကော်မရှင် (%)</label><input type="number" id="commRate" min="0" placeholder="0"></div>
+                <div class="form-group"><label>ပေါက်ကြေး (အဆ)</label><input type="number" id="multiplier" min="0" value="80"></div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>နေ့စွဲ / အချိန်</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="sysDate" style="flex: 2;">
+                        <select id="roundTime" style="flex: 1;"><option value="မနက်ပိုင်း">မနက်</option><option value="ညနေပိုင်း">ညနေ</option></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <form id="entryForm">
+                <div class="grid-row" style="align-items: flex-end;">
+                    <div class="form-group" style="flex: 2;"><label>ဂဏန်း</label><input type="text" id="betNum" class="input-lg" autocomplete="off" placeholder="ဂဏန်း"></div>
+                    <div class="form-group" style="flex: 2;"><label>ပမာဏ</label><input type="text" id="betAmt" class="input-lg" autocomplete="off" placeholder="ပမာဏ"></div>
+                    <div class="form-group" style="flex: 1;"><button type="submit" class="btn-enter">Enter</button></div>
+                </div>
+            </form>
+            <div class="formula-group" id="formulaButtons">
+                <button type="button" class="formula-btn" data-type="append" data-val="ထိပ်">ထိပ် (h)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="နောက်">နောက် (t)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="ပါဝါ">ပါဝါ (pw)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="နက္ခတ်">နက္ခတ် (nk)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="ညီကို">ညီကို (br)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="အပူး">အပူး (++)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="ဘရိတ်">ဘရိတ် (b)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="မူး">မူး (mu)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="စုံစုံ">စုံစုံ (ss)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="မမ">မမ (mm)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="စုံမ">စုံမ (sm)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="မစုံ">မစုံ (ms)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="p18">အပတ်(အပူးမပါ)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="p19">အပတ်(အပူးပါ)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="p20">အပတ်(၂ခါ)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="k">အခွေ(ရိုး)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="k+">အခွေ(ပူး)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="ပြန်">အပြန် (r)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="historySection" class="history-box hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.9rem; color: #555; font-weight: bold;">📝 နောက်ဆုံးသွင်းထားသော မှတ်တမ်း:</span>
+                    <button id="btnUndoLast" class="btn-box btn-box-red" style="padding: 4px 10px;">↩️ Undo (ပြန်ဖျက်မည်)</button>
+                </div>
+                <div id="lastEntryText" class="history-text">-</div>
+            </div>
+
+            <div class="entries-header">
+                <div class="entries-title">သွင်းထားသော စာရင်းများ</div>
+                <div class="action-buttons">
+                    <button class="btn-box" id="btnExpEntries" style="color: var(--color-blue);">📷 ပုံထုတ်မည်</button>
+                    <button class="btn-box btn-box-red" id="btnClearAll">🗑️ ဖျက်မည်</button>
+                </div>
+            </div>
+            
+            <div id="exportEntriesArea" class="export-area">
+                <div class="export-watermark hidden"><span>ANS</span></div>
+                <div id="entriesHeaderInfo" style="display: none; text-align: center; margin-bottom: 10px; border-bottom: 1px dashed rgba(0,0,0,0.1); padding-bottom: 5px; position: relative; z-index: 2;"></div>
+                
+                <div style="position: relative;">
+                    <div class="table-responsive" id="entriesTableWrap">
+                        <table>
+                            <thead><tr><th>ဂဏန်း</th><th>စုစုပေါင်း</th><th class="hide-on-export">အသေးစိတ်</th></tr></thead>
+                            <tbody id="entriesTableBody"></tbody>
+                            <tfoot id="entriesTableFoot" class="hidden">
+                                <tr class="footer-row">
+                                    <td class="text-blue">စုစုပေါင်း</td><td id="grandTotalAmt" class="text-red">0</td><td class="hide-on-export"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <button id="btnScrollBottom" class="hidden">⬇️ အောက်ဆုံးသို့</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="font-weight: 800; font-size: 1.15rem; margin-bottom: 10px;">လစ်မစ် & အပြင်ကာစနစ်</div>
+            <div class="grid-row" style="align-items: flex-end;">
+                <div class="form-group"><label>လစ်မစ်သတ်မှတ်ရန်</label><input type="number" id="headLimit" min="0" class="input-lg" placeholder="0"></div>
+                <div class="form-group"><button type="button" class="btn-enter" id="btnCheckLimit">စစ်ဆေးမည်</button></div>
+            </div>
+
+            <div id="hedgeSection" class="hidden" style="margin-top: 15px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 15px;">
+                <div class="form-group" style="margin-bottom: 10px;"><label>ဒိုင် / ကိုယ်စားလှယ် အမည်</label><input type="text" id="hedgeMasterName" placeholder="အမည် ထည့်ပါ"></div>
+                <div class="table-responsive" style="max-height: 250px;">
+                    <table><tbody id="hedgeTableBody"></tbody></table>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 0.95rem; margin-bottom: 8px;"><span>ကာထားသော စာရင်း:</span><span class="text-red">Total: <span id="totalHedgedText">0</span></span></div>
+                <div id="hedgedListDisplay" class="tags-wrapper"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="font-weight: 800; font-size: 1.15rem; margin-bottom: 15px;">ငွေရှင်းတမ်း တွက်ချက်ရန်</div>
+            <div class="grid-row" style="align-items: flex-end;">
+                <div class="form-group" style="flex: 2;"><label>ပေါက်ဂဏန်း</label><input type="text" id="winNum" class="input-lg" inputmode="numeric" placeholder="--"></div>
+                <div class="form-group" style="flex: 1;"><label>ရှယ်ယာ (%)</label><input type="number" id="shareRate" min="0" class="input-lg" placeholder="0"></div>
+                <div class="form-group" style="flex: 1;"><button id="btnCalcFinal" class="btn-enter" style="background: linear-gradient(135deg, rgba(52, 199, 89, 0.9), rgba(40, 167, 69, 0.9));">တွက်မည်</button></div>
+            </div>
+            
+            <div id="slipArea" class="export-area hidden" style="margin-top: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.6); background: rgba(255, 255, 255, 0.7);">
+                <div class="export-watermark hidden"><span>ANS</span></div>
+                <div style="text-align: center; margin-bottom: 15px; border-bottom: 1px dashed rgba(0,0,0,0.1); padding-bottom: 10px; position: relative; z-index: 2;">
+                    <h3 style="font-size: 1.25rem; font-weight: 900;">ငွေရှင်းတမ်း</h3>
+                    <p style="margin-top:5px; font-size: 1rem;"><strong id="outAgent" style="color: var(--color-gold-dark);"></strong><br><span id="outDate" style="color: var(--color-gray); font-size: 0.85rem;"></span></p>
+                </div>
+                
+                <table style="width: 100%; position: relative; z-index: 2;">
+                    <tr><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">ရောင်းရငွေ</td><td style="text-align: right; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);"><input type="text" id="outSales" class="receipt-input" value="0"></td></tr>
+                    <tr><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">ကော်မရှင်</td><td style="text-align: right; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);"><input type="text" id="outComm" class="receipt-input" value="0"></td></tr>
+                    <tr><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); font-weight: 800;">ကျန်ငွေ</td><td id="outNet" style="text-align: right; font-weight: 900; font-size: 1.1rem; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">0</td></tr>
+                    
+                    <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">
+                            လျော်ငွေ <br><span id="payoutDetail" style="font-size: 0.8rem; color: var(--color-gray); font-weight: bold;">(0 × 80ဆ)</span>
+                        </td>
+                        <td style="text-align: right; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); vertical-align: top;"><input type="text" id="outPayout" class="receipt-input" value="0"></td>
+                    </tr>
+                    
+                    <tr><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); font-weight: 800;">ရှင်းရန်ငွေ</td><td id="outAgentBal" style="text-align: right; font-weight: 900; font-size: 1.1rem; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">0</td></tr>
+                    <tr id="rowHedgeCost" class="hidden"><td style="padding: 12px 0 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">အပြင်တင်ငွေ</td><td id="sysHedgeCost" style="text-align: right; font-weight: 900; font-size: 1.1rem; color: var(--color-red); padding: 12px 0 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">0</td></tr>
+                    <tr id="rowHedgeWin" class="hidden"><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">ကာလျော်ငွေ</td><td id="sysHedgeWin" style="text-align: right; font-weight: 900; font-size: 1.1rem; color: var(--color-green); padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">0</td></tr>
+                    <tr><td style="padding: 15px 0; font-weight: 900; font-size: 1.2rem; border-top: 2px solid var(--color-green);">အသားတင်<br>ကျန်ငွေ</td><td id="sysFinalBal" style="text-align: right; font-weight: 900; font-size: 1.2rem; padding: 15px 0; border-top: 2px solid var(--color-green);">0</td></tr>
+                    
+                    <tr id="rowShare" class="hidden"><td style="padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1);">ရှယ်ယာခွဲဝေငွေ <br><span id="shareDetailText" style="font-size: 0.8rem; color: var(--color-gray); font-weight: bold;">(0%)</span></td><td style="text-align: right; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); vertical-align: top;"><input type="text" id="outShareAmt" class="receipt-input" value="0"></td></tr>
+                    <tr id="rowNetAfterShare" class="hidden"><td style="padding: 15px 0; font-weight: 900; font-size: 1.1rem; border-top: 2px solid var(--color-blue);">ရှယ်ယာနုတ်ပြီး<br>ကျန်ငွေ</td><td id="sysNetAfterShare" style="text-align: right; font-weight: 900; font-size: 1.2rem; padding: 15px 0; border-top: 2px solid var(--color-blue);">0</td></tr>
+                </table>
+            </div>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <button id="btnExportSlip" class="btn-box hidden" style="width: 100%; border: 1px solid var(--color-blue); color: var(--color-blue); padding: 12px; font-size: 1.1rem; font-weight: 900; background: rgba(255,255,255,0.8);">📷 ဘောင်ချာ ပုံထုတ်မည်</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            "use strict";
+
+            // --- Database Module ---
+            class DatabaseService {
+                #db;
+                constructor() {
+                    this.#db = new Dexie("App2D_ProDB_V2");
+                    this.#db.version(1).stores({
+                        entries: "++id, number, amount, date, batchId",
+                        hedges: "++id, number, amount, master, date"
+                    });
+                }
+                async addMultipleEntries(entries) { return await this.#db.entries.bulkAdd(entries); }
+                async deleteEntry(id) { return await this.#db.entries.delete(id); }
+                async deleteByBatchId(batchId) { 
+                    const entries = await this.#db.entries.filter(e => e.batchId === batchId).toArray();
+                    const ids = entries.map(e => e.id);
+                    await this.#db.entries.bulkDelete(ids);
+                }
+                async getAllEntries() { return await this.#db.entries.toArray(); }
+                async saveHedge(hedge) { return await this.#db.hedges.add(hedge); }
+                async deleteHedge(id) { return await this.#db.hedges.delete(id); }
+                async getAllHedges() { return await this.#db.hedges.toArray(); }
+                async clearAllData() { return await Promise.all([this.#db.entries.clear(), this.#db.hedges.clear()]); }
+            }
+
+            // --- UI Helper Module ---
+            class DOMHelper {
+                static get(id) { return document.getElementById(id); }
+                static val(id) { return this.get(id)?.value.trim() || ''; }
+                static num(id) { return parseFloat(this.val(id)) || 0; }
+                static setVal(id, value) { const el = this.get(id); if(el) el.value = value; }
+                static text(id, txt) { const el = this.get(id); if(el) el.innerText = txt; }
+                static html(id, htmlString) { const el = this.get(id); if(el) el.innerHTML = htmlString; }
+                static show(id) { this.get(id)?.classList.remove('hidden'); }
+                static hide(id) { this.get(id)?.classList.add('hidden'); }
+                static formatObj(num) { return new Intl.NumberFormat('en-US').format(num); }
+                static toggle(selector, isVisible) { 
+                    document.querySelectorAll(selector).forEach(el => isVisible ? el.classList.remove('hidden') : el.classList.add('hidden')); 
+                }
+            }
+
+            // --- Smart Parser Core Logic (100% Retained) ---
+            class SmartParser {
+                static parse(input) {
+                    const rawParts = input.toLowerCase().split(/[,\s.-]+/).filter(Boolean);
+                    let finalNumbers = []; 
+                    for (const part of rawParts) {
+                        const nums = this.parseSingle(part);
+                        if (nums.length > 0) finalNumbers.push(...nums); 
+                        else return []; 
+                    }
+                    return finalNumbers;
+                }
+            
+                static parseSingle(str) {
+                    let numbers = [];
+                    const htMatch = str.match(/^(\d)(ထိပ်|ရှေ့|h)$/);
+                    if (htMatch) { const n = htMatch[1]; for(let i=0; i<=9; i++) numbers.push(`${n}${i}`); return numbers; }
+                    
+                    const nkMatch = str.match(/^(\d)(နောက်|n|t)$/);
+                    if (nkMatch) { const n = nkMatch[1]; for(let i=0; i<=9; i++) numbers.push(`${i}${n}`); return numbers; }
+                    
+                    const brkMatch = str.match(/^(\d+)(ဘရိတ်|b|bkk)$/);
+                    if (brkMatch) {
+                        const bList = brkMatch[1].split('');
+                        for(const bChar of bList) {
+                            const b = parseInt(bChar, 10);
+                            for (let i = 0; i <= 9; i++) {
+                                for (let j = 0; j <= 9; j++) { if ((i + j) % 10 === b) numbers.push(`${i}${j}`); }
+                            }
+                        }
+                        return numbers;
+                    }
+
+                    if (str.includes('ပါဝါ') || str === 'pw') return ['05', '50', '16', '61', '27', '72', '38', '83', '49', '94'];
+                    if (str.includes('နက္ခတ်') || str === 'nk') return ['07', '70', '18', '81', '24', '42', '35', '53', '69', '96'];
+                    if (str.includes('ညီအစ်ကို') || str.includes('ညီကို') || str === 'br') return ['01','10', '12','21', '23','32', '34','43', '45','54', '56','65', '67','76', '78','87', '89','98', '90','09'];
+                    if (str.includes('အပူး') || str === '++' || str === 'dd') { for (let i = 0; i <= 9; i++) numbers.push(`${i}${i}`); return numbers; }
+                    if (str.includes('စုံစုံ') || str === 'ss') { for (let i of [0,2,4,6,8]) for (let j of [0,2,4,6,8]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str.includes('မမ') || str === 'mm') { for (let i of [1,3,5,7,9]) for (let j of [1,3,5,7,9]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str.includes('စုံမ') || str === 'sm') { for (let i of [0,2,4,6,8]) for (let j of [1,3,5,7,9]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str.includes('မစုံ') || str === 'ms') { for (let i of [1,3,5,7,9]) for (let j of [0,2,4,6,8]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str.includes('မူး') || str === 'mu') { const temp = new Set(); for (let i = 0; i <= 9; i++) { temp.add(`0${i}`); temp.add(`${i}0`); } return Array.from(temp); }
+                    
+                    const patMatch = str.match(/^(\d)(ပတ်|အပတ်|\/|p)(18|19|20|၁၈|၁၉|၂၀)?$/);
+                    if (patMatch) {
+                        const n = patMatch[1]; 
+                        const mode = patMatch[3] ? patMatch[3].replace(/[၁-၉၀]/g, m => "၀၁၂၃၄၅၆၇၈၉".indexOf(m)) : '19'; 
+                        let tempArr = [];
+                        for (let i = 0; i <= 9; i++) { if (i.toString() !== n) { tempArr.push(`${n}${i}`); tempArr.push(`${i}${n}`); } }
+                        if (mode === '19') tempArr.push(`${n}${n}`);
+                        else if (mode === '20') { tempArr.push(`${n}${n}`); tempArr.push(`${n}${n}`); }
+                        return tempArr;
+                    }
+                    
+                    const khweMatch = str.match(/^(\d{2,})(အခွေ|ခွေ|\*|k)(.*)$/);
+                    if (khweMatch) {
+                        const digits = khweMatch[1].split(''); 
+                        const incD = khweMatch[3].includes('ပူး') || khweMatch[3].includes('+') || khweMatch[3].includes('ပါ');
+                        const temp = new Set();
+                        for (let i = 0; i < digits.length; i++) {
+                            for (let j = 0; j < digits.length; j++) { 
+                                if (i !== j) temp.add(digits[i] + digits[j]); 
+                                if (i === j && incD) temp.add(digits[i] + digits[i]); 
+                            }
+                        }
+                        return Array.from(temp);
+                    }
+                    
+                    const revMatch = str.match(/^(\d{2})(ပြန်|အပြန်|r)$/);
+                    if (revMatch) return [revMatch[1], revMatch[1][1] + revMatch[1][0]];
+                    if (/^\d{2}$/.test(str)) return [str];
+                    
+                    return []; 
+                }
+            }
+
+            // --- Main Application Controller ---
+            class AppController {
+                #dbService;
+                #lastBatchId = null;
+
+                constructor() {
+                    this.#dbService = new DatabaseService();
+                    this.#setInitialState();
+                    this.#initEventListeners();
+                    this.#initReceiptAdjustments();
+                }
+
+                #setInitialState() {
+                    const savedState = localStorage.getItem('App2D_FormState_Pro');
+                    if (savedState) {
+                        const s = JSON.parse(savedState);
+                        DOMHelper.setVal('agentName', s.agentName || '');
+                        DOMHelper.setVal('commRate', s.commRate || '');
+                        DOMHelper.setVal('multiplier', s.multiplier || '80');
+                        DOMHelper.setVal('sysDate', s.sysDate || new Date().toISOString().split('T')[0]);
+                        DOMHelper.setVal('roundTime', s.roundTime || 'မနက်ပိုင်း');
+                        DOMHelper.setVal('winNum', s.winNum || '');
+                        DOMHelper.setVal('shareRate', s.shareRate || '');
+                        DOMHelper.setVal('headLimit', s.headLimit || '');
+                    } else {
+                        DOMHelper.setVal('sysDate', new Date().toISOString().split('T')[0]);
+                    }
+                    this.#refreshUI();
+                }
+
+                #saveFormState() {
+                    const state = {
+                        agentName: DOMHelper.val('agentName'),
+                        commRate: DOMHelper.val('commRate'),
+                        multiplier: DOMHelper.val('multiplier'),
+                        sysDate: DOMHelper.val('sysDate'),
+                        roundTime: DOMHelper.val('roundTime'),
+                        winNum: DOMHelper.val('winNum'),
+                        shareRate: DOMHelper.val('shareRate'),
+                        headLimit: DOMHelper.val('headLimit')
+                    };
+                    localStorage.setItem('App2D_FormState_Pro', JSON.stringify(state));
+                }
+
+                #initEventListeners() {
+                    DOMHelper.get('btnOpenHelp')?.addEventListener('click', () => DOMHelper.get('helpModal').classList.add('active'));
+                    DOMHelper.get('btnCloseHelp')?.addEventListener('click', () => DOMHelper.get('helpModal').classList.remove('active'));
+
+                    const inputsToSave = ['agentName', 'commRate', 'multiplier', 'sysDate', 'roundTime', 'shareRate', 'headLimit', 'winNum'];
+                    inputsToSave.forEach(id => {
+                        const el = DOMHelper.get(id);
+                        if (el) {
+                            el.addEventListener('change', () => this.#saveFormState());
+                            if(el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number')) {
+                                el.addEventListener('input', () => this.#saveFormState());
+                            }
+                        }
+                    });
+
+                    DOMHelper.get('entryForm')?.addEventListener('submit', (e) => this.#handleFormSubmit(e));
+                    
+                    DOMHelper.get('formulaButtons')?.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.formula-btn');
+                        if (!btn) return;
+                        const numInput = DOMHelper.get('betNum');
+                        const amtInput = DOMHelper.get('betAmt');
+
+                        if (btn.dataset.type === 'replace') {
+                            numInput.value = btn.dataset.val; amtInput.focus();
+                        } else if (btn.dataset.type === 'append') {
+                            numInput.value += btn.dataset.val;
+                            if (/^\d+/.test(numInput.value)) amtInput.focus(); else numInput.focus();
+                        }
+                    });
+
+                    DOMHelper.get('btnClearAll')?.addEventListener('click', () => this.#handleClearAll());
+                    DOMHelper.get('btnUndoLast')?.addEventListener('click', () => this.#handleUndoLast());
+                    DOMHelper.get('btnCheckLimit')?.addEventListener('click', () => this.#checkLimits());
+                    DOMHelper.get('btnCalcFinal')?.addEventListener('click', () => this.#calculateFinalLedger());
+                    DOMHelper.get('btnExpEntries')?.addEventListener('click', () => this.#exportAsImage('entries'));
+                    DOMHelper.get('btnExportSlip')?.addEventListener('click', () => this.#exportAsImage('slip'));
+
+                    DOMHelper.get('shareRate')?.addEventListener('input', () => {
+                        if (!DOMHelper.get('slipArea').classList.contains('hidden')) {
+                            this.#calculateFinalLedger();
+                        }
+                    });
+
+                    const wrap = DOMHelper.get('entriesTableWrap');
+                    DOMHelper.get('btnScrollBottom')?.addEventListener('click', () => {
+                        wrap.scrollTo({ top: wrap.scrollHeight, behavior: 'smooth' });
+                    });
+                    wrap.addEventListener('scroll', () => {
+                        if (wrap.scrollTop > 50) DOMHelper.show('btnScrollBottom');
+                        else DOMHelper.hide('btnScrollBottom');
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        const delEntryBtn = e.target.closest('.del-cross:not(.del-hedge)');
+                        const saveHedgeBtn = e.target.closest('.save-hedge-btn');
+                        const delHedgeBtn = e.target.closest('.del-hedge');
+                        
+                        if (delEntryBtn) this.#handleDeleteEntry(Number(delEntryBtn.dataset.id));
+                        if (saveHedgeBtn) this.#handleSaveHedge(saveHedgeBtn.dataset.num);
+                        if (delHedgeBtn) this.#handleDeleteHedge(Number(delHedgeBtn.dataset.id));
+                    });
+                }
+
+                #initReceiptAdjustments() {
+                    const inputs = ['outSales', 'outComm', 'outPayout', 'outShareAmt']; 
+                    inputs.forEach(id => {
+                        const el = DOMHelper.get(id);
+                        if(el) {
+                            el.addEventListener('input', () => this.#recalculateReceipt());
+                            el.addEventListener('blur', (e) => { e.target.value = DOMHelper.formatObj(this.#parseAmt(e.target.value)); });
+                            el.addEventListener('focus', (e) => { e.target.value = this.#parseAmt(e.target.value) || ''; });
+                        }
+                    });
+                }
+
+                #parseAmt(val) { return val ? (parseFloat(val.toString().replace(/,/g, '')) || 0) : 0; }
+                
+                #toEngNum(str) {
+                    const mmNums = { '၀':'0', '၁':'1', '၂':'2', '၃':'3', '၄':'4', '၅':'5', '၆':'6', '၇':'7', '၈':'8', '၉':'9' };
+                    return str.replace(/[၀-၉]/g, m => mmNums[m]);
+                }
+
+                // --- Input Logic ---
+                async #handleFormSubmit(e) {
+                    e.preventDefault();
+                    
+                    const rawNumInput = DOMHelper.val('betNum');
+                    const rawAmtInput = DOMHelper.val('betAmt');
+                    
+                    const rawNum = this.#toEngNum(rawNumInput).replace(/[()\[\]]/g, '');
+                    const rawAmt = this.#toEngNum(rawAmtInput).replace(/[()\[\]]/g, '');
+
+                    let straightAmt = 0, reverseAmt = 0, numPart = rawNum; 
+                    const amtStr = rawAmt.replace(/,/g, '').replace(/\s+/g, '').toLowerCase().replace(/အပြန်/g, 'r').replace(/\//g, 'r');
+                    
+                    const amtMatch = amtStr.match(/^(\d*)(?:r)(\d*)$/);
+                    
+                    if (amtMatch) {
+                        straightAmt = parseInt(amtMatch[1], 10) || 0; 
+                        const revStr = amtMatch[2];
+                        reverseAmt = revStr === '' ? straightAmt : (parseInt(revStr, 10) || 0);
+                    } else if (/^\d+$/.test(amtStr)) {
+                        straightAmt = parseInt(amtStr, 10);
+                    } else {
+                        const fullStr = `${rawNum} ${rawAmt}`.trim().toLowerCase().replace(/အပြန်/g, 'r').replace(/\//g, 'r');
+                        const complexMatch = fullStr.match(/^(.*?)\s+([\d,]*)\s*(?:r)\s*([\d,]*)$/);
+                        if (complexMatch) {
+                            numPart = complexMatch[1]; 
+                            straightAmt = parseInt(complexMatch[2].replace(/,/g, ''), 10) || 0; 
+                            const revStr = complexMatch[3].replace(/,/g, '');
+                            reverseAmt = revStr === '' ? straightAmt : (parseInt(revStr, 10) || 0);
+                        } else {
+                            const simpleMatch = fullStr.match(/^(.*?)\s+([\d,]+)$/);
+                            if (simpleMatch) { 
+                                numPart = simpleMatch[1]; 
+                                straightAmt = parseInt(simpleMatch[2].replace(/,/g, ''), 10); 
+                            }
+                        }
+                    }
+
+                    if (straightAmt <= 0 && reverseAmt <= 0) return alert("ပမာဏ မှားယွင်းနေပါသည်။");
+                    
+                    const parsedNums = SmartParser.parse(numPart);
+                    if (parsedNums.length === 0) return alert("ဂဏန်း အမှားပါဝင်နေပါသည်။");
+
+                    try {
+                        const entries = [];
+                        const dateVal = DOMHelper.val('sysDate');
+                        const batchId = Date.now(); 
+                        
+                        for (const n of parsedNums) {
+                            if (straightAmt > 0) entries.push({ number: n, amount: straightAmt, date: dateVal, batchId });
+                            if (reverseAmt > 0) {
+                                const revNum = n[1] + n[0];
+                                if (n === revNum || !parsedNums.includes(revNum)) {
+                                    entries.push({ number: revNum, amount: reverseAmt, date: dateVal, batchId });
+                                }
+                            }
+                        }
+                        
+                        await this.#dbService.addMultipleEntries(entries);
+                        
+                        this.#lastBatchId = batchId;
+                        DOMHelper.text('lastEntryText', `${rawNumInput} ~ ${rawAmtInput}`);
+                        DOMHelper.show('historySection');
+
+                        DOMHelper.setVal('betNum', ''); DOMHelper.setVal('betAmt', ''); 
+                        DOMHelper.get('betNum').focus();
+                        DOMHelper.hide('hedgeSection');
+                        
+                        await this.#refreshUI();
+                        const wrap = DOMHelper.get('entriesTableWrap');
+                        setTimeout(() => wrap.scrollTo({ top: wrap.scrollHeight, behavior: 'smooth' }), 100);
+
+                    } catch (error) { 
+                        alert("ဒေတာသိမ်းဆည်းရာတွင် အမှားအယွင်းဖြစ်ပေါ်ခဲ့ပါသည်။"); 
+                    }
+                }
+
+                async #handleUndoLast() {
+                    if (!this.#lastBatchId) return;
+                    if (confirm("နောက်ဆုံးသွင်းထားသော စာရင်းကို ပြန်ဖျက်မည်လား?")) {
+                        try {
+                            await this.#dbService.deleteByBatchId(this.#lastBatchId);
+                            this.#lastBatchId = null;
+                            DOMHelper.hide('historySection');
+                            await this.#refreshUI();
+                        } catch (e) {}
+                    }
+                }
+
+                async #handleDeleteEntry(id) { 
+                    try { await this.#dbService.deleteEntry(id); await this.#refreshUI(); } catch(e) {}
+                }
+
+                async #handleDeleteHedge(id) { 
+                    try { await this.#dbService.deleteHedge(id); if(!DOMHelper.get('hedgeSection').classList.contains('hidden')) await this.#checkLimits(); await this.#refreshUI(); } catch(e) {}
+                }
+
+                async #handleClearAll() {
+                    if (confirm("စာရင်းအားလုံးကို ဖျက်ရန် သေချာပါသလား?")) {
+                        try {
+                            await this.#dbService.clearAllData();
+                            this.#lastBatchId = null;
+                            localStorage.removeItem('App2D_FormState_Pro'); 
+                            ['hedgeSection', 'slipArea', 'btnExportSlip', 'historySection'].forEach(id => DOMHelper.hide(id));
+                            DOMHelper.setVal('agentName', ''); DOMHelper.setVal('commRate', ''); DOMHelper.setVal('multiplier', '80');
+                            DOMHelper.setVal('winNum', ''); DOMHelper.setVal('shareRate', ''); DOMHelper.setVal('headLimit', '');
+                            await this.#refreshUI();
+                        } catch (e) {}
+                    }
+                }
+
+                // --- UI Update ---
+                async #refreshUI() {
+                    try {
+                        const [entries, hedges] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges()]);
+                        
+                        let grandTotalAmt = 0;
+                        const groupedEntries = entries.reduce((acc, curr) => {
+                            acc[curr.number] ??= { total: 0, details: [] };
+                            acc[curr.number].total += curr.amount;
+                            acc[curr.number].details.push(curr);
+                            grandTotalAmt += curr.amount;
+                            return acc;
+                        }, {});
+
+                        const rowsHTML = Object.keys(groupedEntries).sort().map(num => {
+                            const group = groupedEntries[num];
+                            const tags = group.details.map(d => `
+                                <div class="detail-tag" data-html2canvas-ignore>${DOMHelper.formatObj(d.amount)} <button class="del-cross" data-id="${d.id}">✖</button></div>
+                            `).join('');
+                            return `<tr><td class="col-num">${num}</td><td class="col-total">${DOMHelper.formatObj(group.total)}</td><td class="hide-on-export"><div class="tags-wrapper">${tags}</div></td></tr>`;
+                        }).join('');
+                        
+                        DOMHelper.html('entriesTableBody', rowsHTML);
+                        DOMHelper.text('grandTotalAmt', DOMHelper.formatObj(grandTotalAmt));
+                        grandTotalAmt !== 0 ? DOMHelper.show('entriesTableFoot') : DOMHelper.hide('entriesTableFoot');
+
+                        const totalHedgedAmt = hedges.reduce((sum, h) => sum + h.amount, 0);
+                        const hedgeHTML = hedges.map(h => `<div class="detail-tag" style="background:rgba(76, 175, 80, 0.15); color:#2e7d32;">${h.number} - ${DOMHelper.formatObj(h.amount)} <button class="del-cross del-hedge" data-id="${h.id}">✖</button></div>`).join('');
+                        DOMHelper.text('totalHedgedText', DOMHelper.formatObj(totalHedgedAmt));
+                        DOMHelper.html('hedgedListDisplay', hedgeHTML || "<span style='color:var(--color-gray);'>-</span>");
+                        
+                        const wrap = DOMHelper.get('entriesTableWrap');
+                        if (wrap.scrollHeight > wrap.clientHeight) DOMHelper.show('btnScrollBottom');
+                        else DOMHelper.hide('btnScrollBottom');
+                        
+                    } catch (e) {}
+                }
+
+                async #checkLimits() {
+                    const limit = DOMHelper.num('headLimit');
+                    if (limit <= 0) return;
+                    try {
+                        const [entries, hedges] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges()]);
+                        const grossGrouped = entries.reduce((acc, curr) => { acc[curr.number] = (acc[curr.number] || 0) + curr.amount; return acc; }, {});
+                        const hedgedGrouped = hedges.reduce((acc, curr) => { acc[curr.number] = (acc[curr.number] || 0) + curr.amount; return acc; }, {});
+
+                        let hasOverLimit = false;
+                        const limitRowsHTML = Object.entries(grossGrouped).sort(([a], [b]) => a.localeCompare(b)).map(([num, total]) => {
+                            const overAmt = (total - (hedgedGrouped[num] || 0)) - limit;
+                            if (overAmt > 0) {
+                                hasOverLimit = true;
+                                return `<tr><td class="col-num">${num}</td><td>${DOMHelper.formatObj(total)}</td><td class="text-red">${DOMHelper.formatObj(overAmt)}</td>
+                                        <td><input type="number" id="h_inp_${num}" class="receipt-input" style="width:70px; text-align:center;" value="${overAmt}"></td>
+                                        <td><button class="btn-box save-hedge-btn" data-num="${num}">+ ကာမည်</button></td></tr>`;
+                            } return '';
+                        }).join('');
+
+                        DOMHelper.html('hedgeTableBody', limitRowsHTML);
+                        if (hasOverLimit) DOMHelper.show('hedgeSection');
+                        else { DOMHelper.hide('hedgeSection'); alert("လစ်မစ်ကျော်သည့် ဂဏန်း မရှိပါ။"); }
+                    } catch (e) {}
+                }
+
+                async #handleSaveHedge(num) {
+                    const amt = DOMHelper.num(`h_inp_${num}`);
+                    const master = DOMHelper.val('hedgeMasterName');
+                    if (!master) { alert("ဒိုင် / ကိုယ်စားလှယ် အမည် ထည့်ပါ။"); DOMHelper.get('hedgeMasterName')?.focus(); return; }
+                    if (amt > 0) {
+                        try { await this.#dbService.saveHedge({ number: num, amount: amt, master: master, date: DOMHelper.val('sysDate') }); await this.#checkLimits(); await this.#refreshUI(); } catch(e) {}
+                    }
+                }
+
+                // --- Final Ledger Calculation (Safely Upgraded with Math.round) ---
+                async #calculateFinalLedger() {
+                    const agent = DOMHelper.val('agentName') || "အမည်မသိ";
+                    const winNum = DOMHelper.val('winNum');
+                    const mul = DOMHelper.num('multiplier') || 80;
+                    const commRate = DOMHelper.num('commRate') || 0;
+
+                    try {
+                        const [entries, hedges] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges()]);
+
+                        const aSales = entries.reduce((sum, e) => sum + e.amount, 0);
+                        // Math.round added for 100% precision
+                        const aComm = Math.round(aSales * (commRate / 100));
+                        
+                        const winEntries = entries.filter(e => e.number === winNum);
+                        const totalWinAmt = winEntries.reduce((sum, e) => sum + e.amount, 0);
+                        // Math.round added for 100% precision
+                        const aPayout = Math.round(totalWinAmt * mul);
+
+                        const sysCost = hedges.reduce((sum, h) => sum + h.amount, 0);
+                        const sysWin = Math.round(hedges.filter(h => h.number === winNum).reduce((sum, h) => sum + h.amount, 0) * mul);
+
+                        const preFinalBal = (aSales - aComm) - aPayout - sysCost + sysWin;
+                        const shareRate = DOMHelper.num('shareRate') || 0;
+                        
+                        // Math.round added for 100% precision
+                        const initialShareAmt = Math.round(preFinalBal * (shareRate / 100));
+
+                        DOMHelper.text('outAgent', agent);
+                        DOMHelper.text('outDate', `${DOMHelper.val('sysDate')} (${DOMHelper.val('roundTime')})`);
+                        
+                        DOMHelper.setVal('outSales', DOMHelper.formatObj(aSales));
+                        DOMHelper.setVal('outComm', DOMHelper.formatObj(aComm));
+                        
+                        DOMHelper.html('payoutDetail', `(${DOMHelper.formatObj(totalWinAmt)} × ${mul}ဆ)`);
+                        DOMHelper.setVal('outPayout', DOMHelper.formatObj(aPayout));
+
+                        DOMHelper.text('sysHedgeCost', DOMHelper.formatObj(sysCost));
+                        DOMHelper.text('sysHedgeWin', DOMHelper.formatObj(sysWin));
+                        
+                        DOMHelper.setVal('outShareAmt', DOMHelper.formatObj(initialShareAmt));
+                        
+                        // Logic for displaying Share Rate accurately especially during a loss
+                        if (preFinalBal < 0) {
+                            DOMHelper.text('shareDetailText', `(${shareRate}% အရှုံးဝေစု)`);
+                            DOMHelper.get('outShareAmt').style.color = "var(--color-red)";
+                        } else {
+                            DOMHelper.text('shareDetailText', `(${shareRate}%)`);
+                            DOMHelper.get('outShareAmt').style.color = "inherit";
+                        }
+
+                        if (sysCost > 0 || sysWin > 0) { DOMHelper.show('rowHedgeCost'); DOMHelper.show('rowHedgeWin'); } 
+                        else { DOMHelper.hide('rowHedgeCost'); DOMHelper.hide('rowHedgeWin'); }
+                        
+                        this.#recalculateReceipt();
+                        DOMHelper.show('slipArea'); 
+                        DOMHelper.show('btnExportSlip');
+                    } catch (e) {}
+                }
+
+                #recalculateReceipt() {
+                    const sales = this.#parseAmt(DOMHelper.val('outSales'));
+                    const comm = this.#parseAmt(DOMHelper.val('outComm'));
+                    const payout = this.#parseAmt(DOMHelper.val('outPayout'));
+                    const hCost = this.#parseAmt(DOMHelper.get('sysHedgeCost')?.innerText);
+                    const hWin = this.#parseAmt(DOMHelper.get('sysHedgeWin')?.innerText);
+                    
+                    const net = sales - comm;
+                    const agentBal = net - payout;
+                    const finalBal = agentBal - hCost + hWin;
+
+                    DOMHelper.text('outNet', DOMHelper.formatObj(net));
+                    DOMHelper.text('outAgentBal', DOMHelper.formatObj(agentBal));
+                    
+                    const elAgentBal = DOMHelper.get('outAgentBal');
+                    if(elAgentBal) elAgentBal.style.color = agentBal >= 0 ? "var(--color-green)" : "var(--color-red)";
+                    
+                    DOMHelper.text('sysFinalBal', DOMHelper.formatObj(finalBal));
+                    const elSysFinal = DOMHelper.get('sysFinalBal');
+                    if(elSysFinal) elSysFinal.style.color = finalBal >= 0 ? "var(--color-green)" : "var(--color-red)";
+
+                    const manualShareAmt = this.#parseAmt(DOMHelper.val('outShareAmt'));
+                    const netAfterShare = finalBal - manualShareAmt;
+                    const shareRate = DOMHelper.num('shareRate');
+
+                    // If manualShareAmt is Negative, formatting will naturally add the '-' sign.
+                    if (shareRate !== 0 || manualShareAmt !== 0) {
+                        DOMHelper.show('rowShare');
+                        DOMHelper.show('rowNetAfterShare');
+                        DOMHelper.text('sysNetAfterShare', DOMHelper.formatObj(netAfterShare));
+                        
+                        const elNetAfter = DOMHelper.get('sysNetAfterShare');
+                        if(elNetAfter) {
+                            elNetAfter.style.color = netAfterShare >= 0 ? "var(--color-blue)" : "var(--color-red)";
+                        }
+                        
+                        const elShareAmt = DOMHelper.get('outShareAmt');
+                        if(elShareAmt) {
+                            elShareAmt.style.color = manualShareAmt < 0 ? "var(--color-red)" : "inherit";
+                        }
+
+                    } else {
+                        DOMHelper.hide('rowShare');
+                        DOMHelper.hide('rowNetAfterShare');
+                    }
+                }
+
+                // --- Compact & Clean Export Generation ---
+                async #exportAsImage(type) {
+                    const agent = DOMHelper.val('agentName') || "အမည်မသိ";
+                    const targetArea = type === 'slip' ? DOMHelper.get('slipArea') : DOMHelper.get('exportEntriesArea');
+                    
+                    targetArea.classList.add('exporting');
+                    DOMHelper.toggle('[data-html2canvas-ignore]', false);
+                    DOMHelper.toggle('.export-watermark', true); 
+                    
+                    if (type === 'entries') {
+                        const hdr = DOMHelper.get('entriesHeaderInfo');
+                        if(hdr) { hdr.innerHTML = `<div style="font-size: 1.3rem; font-weight: 900; color: var(--color-gold-dark);">${agent}</div> <div style="font-size:0.85rem; color:var(--color-gray); margin-top: 5px;">${DOMHelper.val('sysDate')} (${DOMHelper.val('roundTime')})</div>`; hdr.style.display = 'block'; }
+                        DOMHelper.get('entriesTableWrap').style.maxHeight = 'none';
+                        DOMHelper.get('entriesTableWrap').style.overflowY = 'visible';
+                        targetArea.style.padding = '15px 20px'; 
+                        targetArea.style.background = '#FFFFFF'; 
+                    } else {
+                        targetArea.style.background = '#FFFFFF';
+                        targetArea.style.padding = '20px';
+                    }
+
+                    await new Promise(r => setTimeout(r, 200));
+
+                    try {
+                        const canvas = await html2canvas(targetArea, { backgroundColor: '#ffffff', scale: 3, useCORS: true, logging: false });
+                        const link = document.createElement('a'); link.href = canvas.toDataURL('image/png', 1.0);
+                        link.download = `${agent === "အမည်မသိ" ? "Unknown" : agent}_${type}_${DOMHelper.val('sysDate')}.png`; link.click();
+                    } catch (err) { 
+                        alert("ပုံထုတ်ရာတွင် အမှားအယွင်းဖြစ်ပေါ်ခဲ့ပါသည်။"); 
+                    } finally {
+                        targetArea.classList.remove('exporting');
+                        DOMHelper.toggle('[data-html2canvas-ignore]', true); 
+                        DOMHelper.toggle('.export-watermark', false); 
+                        
+                        if (type === 'entries') { 
+                            DOMHelper.get('entriesHeaderInfo').style.display = 'none';
+                            DOMHelper.get('entriesTableWrap').style.maxHeight = '400px';
+                            DOMHelper.get('entriesTableWrap').style.overflowY = 'auto';
+                            targetArea.style.padding = '10px'; 
+                            targetArea.style.background = 'rgba(255, 255, 255, 0.4)';
+                        } else { 
+                            targetArea.style.background = 'rgba(255, 255, 255, 0.7)'; 
+                        }
+                    }
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', () => new AppController());
+        })();
+    </script>
+</body>
+</html>
