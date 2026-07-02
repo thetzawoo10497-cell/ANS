@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ledger System</title>
+    
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Padauk:wght@400;700&display=swap');
+
+        :root {
+            --primary: #4F46E5;       
+            --primary-hover: #4338CA;
+            --secondary: #0EA5E9;     
+            --accent: #8B5CF6;        
+            --danger: #EF4444;        
+            --success: #10B981;       
+            --warning: #F59E0B;       
+            
+            --text-dark: #0F172A;     
+            --text-muted: #475569;    
+            
+            --bg-body: #EEF2F6;
+            --glass-bg: rgba(255, 255, 255, 0.98); 
+            --glass-border: rgba(255, 255, 255, 1);
+            --glass-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+            --input-bg: rgba(241, 245, 249, 0.8);
+            
+            --font-main: 'Inter', 'Padauk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-main); -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            color: var(--text-dark); line-height: 1.6; padding: 16px 10px; min-height: 100vh; 
+            background-color: var(--bg-body);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,0.04) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.02) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.04) 0, transparent 50%);
+            background-attachment: fixed; position: relative; overflow-x: hidden;
+            text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 90px; }
+        
+        .card { background: var(--glass-bg); border-radius: 20px; padding: 20px; box-shadow: var(--glass-shadow); border: 1px solid var(--glass-border); }
+        .card-header { font-weight: 900; font-size: 1.25rem; margin-bottom: 16px; color: var(--text-dark); display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+
+        .grid-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+        .grid-row > div { flex: 1; min-width: 140px; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-weight: 800; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 12px 14px; background: var(--input-bg); border: 2px solid transparent; border-radius: 14px; font-size: 1.1rem; color: var(--text-dark); outline: none; transition: 0.2s; font-weight: 800; }
+        input:focus, select:focus { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15); }
+        input[type="checkbox"] { width: auto; transform: scale(1.3); cursor: pointer; accent-color: var(--primary); }
+        
+        .input-lg { font-size: 1.25rem; font-weight: 900; text-align: center; letter-spacing: 1px; color: var(--primary) !important; }
+        .input-lg::placeholder { color: #94A3B8; font-weight: 600; letter-spacing: 0px; font-size: 1.05rem; }
+
+        .btn-enter { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 14px; font-weight: 900; font-size: 1.1rem; height: 52px; width: 100%; cursor: pointer; box-shadow: 0 8px 15px rgba(79, 70, 229, 0.25); transition: 0.2s; }
+        .btn-enter:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(79, 70, 229, 0.35); }
+        .btn-enter:active { transform: translateY(1px); }
+
+        /* Unified Formula Buttons */
+        .formula-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; padding: 16px; background: #F8FAFC; border-radius: 16px; border: 1px solid #E2E8F0; }
+        .formula-btn { background: #EEF2FF; color: var(--primary); border: 1px solid #C7D2FE; padding: 12px 4px; border-radius: 10px; font-size: 0.95rem; font-weight: 800; cursor: pointer; transition: 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; word-break: keep-all; }
+        .formula-btn:hover { background: #E0E7FF; border-color: #A5B4FC; }
+        .formula-btn:active { transform: scale(0.95); }
+        .span-full { grid-column: 1 / -1; }
+        @media (max-width: 420px) { .formula-btn { font-size: 0.8rem; padding: 10px 0; } .input-lg { font-size: 1.15rem; } }
+
+        /* General Buttons */
+        .btn-box { background: #ffffff; border: 2px solid #E2E8F0; border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; color: var(--text-dark); cursor: pointer; font-weight: 800; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;}
+        .btn-box:hover { border-color: var(--secondary); color: var(--secondary); }
+        .btn-box-red { background: #FEF2F2; color: var(--danger); border-color: #FECACA; }
+        .btn-box-red:hover { background: var(--danger); color: white; border-color: var(--danger); }
+        .btn-box-blue { background: #EEF2FF; color: var(--primary); border-color: #C7D2FE; }
+        .btn-box-blue:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* History & Undo System */
+        .history-wrapper { background: #F8FAFC; border: 2px solid #E2E8F0; border-radius: 16px; padding: 12px; }
+        .history-list { max-height: 350px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px; }
+        .log-item { background: #ffffff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .log-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #E2E8F0; padding-bottom: 8px; }
+        .log-title { font-size: 1.05rem; font-weight: 900; color: var(--primary); }
+        .log-time { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+        .log-details { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); word-break: break-all; background: #F1F5F9; padding: 8px; border-radius: 8px; border: 1px solid #E2E8F0;}
+        .log-summary { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 0.95rem; color: var(--text-dark); margin-top: 4px; }
+        .btn-log-del { align-self: flex-end; padding: 6px 12px; font-size: 0.85rem; }
+        .btn-log-undo { align-self: flex-end; padding: 6px 12px; font-size: 0.85rem; background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; font-weight: 900; border-radius: 8px; cursor: pointer; transition: 0.2s;}
+        .btn-log-undo:hover { background: var(--danger); color: white; }
+
+        /* Ledger Table */
+        .table-responsive-wrapper { position: relative; border-radius: 14px; border: 1px solid #E2E8F0; background: #ffffff; overflow: hidden; margin-top: 12px; }
+        .table-responsive { width: 100%; max-height: 450px; overflow-y: auto; overflow-x: hidden; position: relative; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+        thead th { position: sticky; top: 0; background: #F8FAFC; z-index: 10; padding: 14px 12px; font-weight: 800; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #E2E8F0; }
+        td { padding: 12px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+        .col-num { color: var(--primary); font-weight: 900; font-size: 1.2rem; width: 15%; }
+        .col-total { color: var(--text-dark); font-weight: 900; font-size: 1.1rem; width: 25%; }
+        .col-detail { width: 60%; }
+        
+        .tags-wrapper { display: flex; flex-wrap: wrap; gap: 6px; }
+        .detail-tag { display: inline-flex; justify-content: space-between; align-items: center; border: 1px solid #E2E8F0; padding: 4px 8px; border-radius: 8px; font-size: 0.95rem; font-weight: 700; background: #ffffff; color: var(--text-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-width: 70px; }
+        .del-cross { color: var(--danger); margin-left: 6px; font-weight: 900; cursor: pointer; border: none; background: #FEF2F2; border-radius: 6px; font-size: 0.85rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s;}
+        .del-cross:hover { background: var(--danger); color: white; }
+        
+        .footer-row td { font-weight: 900; font-size: 1.15rem; padding: 14px 12px; border-top: 2px solid #E2E8F0; border-bottom: none; position: sticky; bottom: 0; background: #F8FAFC; z-index: 10;}
+        .text-red { color: var(--danger) !important; }
+        .text-blue { color: var(--primary) !important; }
+        .text-green { color: var(--success) !important; }
+        .hidden { display: none !important; }
+
+        .receipt-input { width: 100%; background: #F8FAFC !important; border: 1px solid #E2E8F0 !important; border-radius: 10px !important; color: var(--text-dark) !important; font-size: 1.15rem; font-weight: 900; text-align: right; padding: 8px 10px !important; margin: 0; outline: none; transition: 0.2s; font-family: var(--font-main); }
+        .receipt-input:focus { border-color: var(--primary) !important; background: #ffffff !important; box-shadow: 0 0 0 3px rgba(79,70,229,0.1) !important;}
+        
+        /* Floating Button for Scroll */
+        .floating-scroll-btn { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; font-weight: 800; box-shadow: 0 8px 20px rgba(0,0,0,0.2); cursor: pointer; z-index: 20; display: flex; align-items: center; gap: 6px; transition: 0.3s; }
+        .floating-scroll-btn:hover { background: var(--primary); transform: translateX(-50%) translateY(-2px); }
+        .floating-scroll-btn.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(15px); }
+
+        /* Slip Area (Receipt) */
+        .slip-area { margin-top: 20px; padding: 20px; background: #ffffff; border: 2px solid #E2E8F0; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-radius: 16px;}
+        .slip-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #E2E8F0; }
+        .slip-row.bold { font-weight: 900; font-size: 1.15rem; border-bottom: 2px solid #E2E8F0; color: var(--text-dark); }
+        .slip-row.final { font-weight: 900; font-size: 1.3rem; padding: 16px 0 8px 0; border-top: 3px solid var(--text-dark); border-bottom: none; }
+        .slip-label { font-weight: 700; color: var(--text-muted); font-size: 0.95rem; }
+        .slip-value { font-weight: 900; font-size: 1.15rem; text-align: right; }
+
+        /* Help FAB & Modal */
+        .fab-help { position: fixed; bottom: 20px; right: 20px; z-index: 10001; background: var(--text-dark); color: white; border: none; border-radius: 20px; width: 50px; height: 50px; font-size: 1.3rem; box-shadow: 0 10px 25px rgba(15,23,42,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .fab-help:hover { transform: translateY(-3px); }
+        .info-panel { position: fixed; bottom: 85px; right: 20px; z-index: 10000; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(30px); border-radius: 20px; width: 420px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); border: 1px solid rgba(226, 232, 240, 1); transform: translateY(30px) scale(0.9); opacity: 0; pointer-events: none; transition: 0.3s; max-height: 85vh; display: flex; flex-direction: column; }
+        @media (max-width: 480px) { .info-panel { width: 90%; left: 5%; right: 5%; } }
+        .info-panel.active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        .info-header { padding: 16px 20px; font-weight: 900; color: var(--text-dark); border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; background: #F8FAFC; border-radius: 20px 20px 0 0; }
+        .info-close { background: #E2E8F0; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 1rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .info-content { padding: 16px 20px; overflow-y: auto; font-size: 0.9rem; line-height: 1.6; }
+        
+        /* Tip Cards Styling */
+        .tip-card { padding: 14px; border-radius: 12px; margin-bottom: 14px; border-left: 5px solid; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; }
+        .tip-card h4 { margin: 0 0 10px 0; font-size: 1.05rem; font-weight: 900; }
+        .tip-card p { margin: 0 0 8px 0; font-size: 0.95rem; color: var(--text-dark); }
+        .tip-card ul { margin: 0; padding-left: 20px; color: var(--text-muted); font-weight: 600; font-size: 0.9rem;}
+        .tip-card li { margin-bottom: 6px; }
+        .tip-card code { background: #F1F5F9; border: 1px solid #E2E8F0; padding: 2px 6px; border-radius: 6px; font-weight: 900; color: var(--text-dark); }
+        
+        .tip-append { border-left-color: var(--primary); background: #EEF2FF; }
+        .tip-append h4 { color: var(--primary); }
+        .tip-replace { border-left-color: #8B5CF6; background: #F5F3FF; }
+        .tip-replace h4 { color: #8B5CF6; }
+        .tip-amount { border-left-color: var(--success); background: #ECFDF5; }
+        .tip-amount h4 { color: var(--success); }
+        .tip-manual { border-left-color: var(--warning); background: #FFFBEB; }
+        .tip-manual h4 { color: var(--warning); }
+
+        /* Exporting Styles */
+        .export-area { position: relative; background: #ffffff; border-radius: 16px; transition: none; border: 1px solid #E2E8F0; }
+        .exporting { border: none !important; margin: 0 !important; box-shadow: none !important; width: 100% !important; }
+        .exporting * { transition: none !important; }
+        .exporting .hide-on-export { display: none !important; }
+        .exporting .table-responsive-wrapper { overflow: visible !important; border: none !important; border-radius: 0 !important; }
+        .exporting .table-responsive { max-height: none !important; overflow: visible !important; }
+        .exporting td, .exporting th { padding: 10px 8px !important; border-bottom: 1px solid #E2E8F0 !important; }
+        .exporting .receipt-input { border: none !important; background: transparent !important; font-size: 1.15rem !important; box-shadow: none !important; color: inherit !important; pointer-events: none; padding: 0 !important; text-align: right !important;}
+    </style>
+</head>
+<body>
+
+    <button class="fab-help" id="btnOpenHelp">💡</button>
+
+    <div class="info-panel" id="helpModal">
+        <div class="info-header">အသေးစိတ် လမ်းညွှန် <button class="info-close" id="btnCloseHelp">✕</button></div>
+        <div class="info-content">
+            
+            <div class="tip-card tip-append">
+                <h4>၁။ ဆက်တွဲ ဖော်မြူလာများ (Append)</h4>
+                <p>ဂဏန်းအရင်ရိုက်ပြီးမှ ခလုတ်နှိပ်ပါ။ ရှေ့ဂဏန်းကို မဖျက်ဘဲ အနောက်မှ ဆက်တွဲပေးပါမည်။</p>
+                <ul>
+                    <li><code>1h</code> (၁ ထိပ်) = 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 (၁၀ ကွက်)</li>
+                    <li><code>1t</code> (၁ နောက်) = 01, 11, 21, 31, 41, 51, 61, 71, 81, 91 (၁၀ ကွက်)</li>
+                    <li><code>5b</code> (၅ ဘရိတ်) = 05, 14, 23, 32, 41, 50, 69, 78, 87, 96 (၁၀ ကွက်)</li>
+                    <li><code>123k</code> (၁၂၃ ခွေ) = 12, 13, 21, 23, 31, 32 (၆ ကွက်)</li>
+                    <li><code>123k+</code> (၁၂၃ ခွေပူး) = 11, 12, 13, 21, 22, 23, 31, 32, 33 (၉ ကွက်)</li>
+                    <li><code>1p18</code> (၁ ပတ် - ၁၈ ကွက်) = 01, 10, 12, 21, 13, 31, 14, 41, 15, 51, 16, 61, 17, 71, 18, 81, 19, 91</li>
+                    <li><code>1p19</code> (၁ ပတ် - ၁၉ ကွက်) = အထက်ပါ ၁၈ ကွက် + 11</li>
+                    <li><code>1p20</code> (၁ ပတ် - ၂၀ ကွက်) = အထက်ပါ ၁၈ ကွက် + 11, 11</li>
+                </ul>
+            </div>
+
+            <div class="tip-card tip-replace">
+                <h4>၂။ အစားထိုး ဖော်မြူလာများ (Replace)</h4>
+                <p>ဂဏန်းရိုက်စရာမလိုပါ။ နှိပ်လိုက်သည်နှင့် တိုက်ရိုက်ဝင်သွားပါမည်။</p>
+                <ul>
+                    <li><code>pw</code> (ပါဝါ) = 05, 50, 16, 61, 27, 72, 38, 83, 49, 94 (၁၀ ကွက်)</li>
+                    <li><code>nk</code> (နက္ခတ်) = 07, 70, 18, 81, 24, 42, 35, 53, 69, 96 (၁၀ ကွက်)</li>
+                    <li><code>br</code> (ညီကို) = 01, 10, 12, 21, 23, 32, 34, 43, 45, 54, 56, 65, 67, 76, 78, 87, 89, 98, 90, 09 (၂၀ ကွက်)</li>
+                    <li><code>++</code> (အပူး) = 00, 11, 22, 33, 44, 55, 66, 77, 88, 99 (၁၀ ကွက်)</li>
+                    <li><code>ss</code> (စုံစုံ) = 00, 02, 04, 06, 08, 20... 88 (၂၅ ကွက်)</li>
+                    <li><code>mm</code> (မမ) = 11, 13, 15, 17, 19, 31... 99 (၂၅ ကွက်)</li>
+                    <li><code>sm</code> (စုံမ) = 01, 03, 05, 07, 09, 21... 89 (၂၅ ကွက်)</li>
+                    <li><code>ms</code> (မစုံ) = 10, 12, 14, 16, 18, 30... 98 (၂၅ ကွက်)</li>
+                    <li><code>mu</code> (မူး) = 0 ပါသောဂဏန်းအားလုံး 00, 01, 10, 02, 20... 09, 90 (၁၉ ကွက်)</li>
+                </ul>
+            </div>
+
+            <div class="tip-card tip-amount">
+                <h4>၃။ ငွေပမာဏ ရိုက်သွင်းနည်း</h4>
+                <p>ပမာဏကွက်တွင် အောက်ပါ ၃ မျိုးသာ ရိုက်ခွင့်ရှိသည်။ (r ထည့်ပါက စနစ်မှ ၂ ကြောင်းခွဲသွင်းပေးမည်)</p>
+                <ul>
+                    <li><code>500</code> = တည့် ၅၀၀ ဖိုး။</li>
+                    <li><code>500r</code> = တည့် ၅၀၀၊ အပြန် ၅၀၀ ဖိုး။</li>
+                    <li><code>500r250</code> = တည့် ၅၀၀၊ အပြန် ၂၅၀ ဖိုး။</li>
+                </ul>
+                <p style="color: var(--danger); font-size: 0.85rem; margin-top: 6px;">* မှတ်ချက်: ဖော်မြူလာများတွင် r တွဲသုံးခွင့် မပြုပါ။</p>
+            </div>
+
+            <div class="tip-card tip-manual">
+                <h4>၄။ Manual ဂဏန်းများ</h4>
+                <p>၂ လုံးတွဲများကို Space (ကွက်လပ်) သို့မဟုတ် အစက် (.) ဖြင့်သာ ခြား၍ ရိုက်ပါ။</p>
+                <ul>
+                    <li>✅ မှန်: <code>12 34 56</code> သို့မဟုတ် <code>12.34.56</code></li>
+                    <li>❌ မှား: <code>12 345 6</code> (၃ လုံးပူးခွင့်မပြုပါ)</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <div class="card" style="padding: 16px 20px;">
+            <div class="grid-row" style="margin-bottom: 0;">
+                <div class="form-group" style="flex: 2; min-width: 170px;">
+                    <label>နေ့စွဲ</label>
+                    <input type="date" id="sysDate" style="font-family: inherit; font-size: 1.05rem;">
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 110px;">
+                    <label>အချိန်</label>
+                    <select id="roundTime">
+                        <option value="မနက်ပိုင်း">☀️ မနက်</option>
+                        <option value="ညနေပိုင်း">🌙 ညနေ</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 3; min-width: 100%;">
+                    <label>ကိုယ်စားလှယ် အမည်</label>
+                    <input type="text" id="agentName" placeholder="အမည် ထည့်ပါ" style="font-size: 1.15rem; color: var(--primary);">
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="historyCard">
+            <div class="card-header" style="color: var(--primary); border-bottom: none; padding-bottom: 0; margin-bottom: 10px;">
+                <span>📋 လုပ်ဆောင်ချက် မှတ်တမ်း</span>
+            </div>
+            <div class="history-wrapper">
+                <div class="history-list" id="logsContainer">
+                    <div style="text-align:center; padding: 20px; color: #94A3B8; font-weight: bold; font-size: 1rem;">မှတ်တမ်း မရှိသေးပါ</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <label style="display: block; font-weight: 800; font-size: 1.1rem; color: var(--text-dark); border-bottom: 2px solid #E2E8F0; padding-bottom: 6px; margin-bottom: 12px;">အမြန်တွက် ဖော်မြူလာများ</label>
+            
+            <div class="formula-group" id="formulaButtons">
+                <button type="button" class="formula-btn" data-type="append" data-val="h">ထိပ် (h)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="t">နောက် (t)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="b">ဘရိတ် (b)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="k">အခွေ(k)</button>
+                
+                <button type="button" class="formula-btn" data-type="append" data-val="p18">အပတ်(၁၈)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="p19">အပတ်(၁၉)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="p20">အပတ်(၂၀)</button>
+                <button type="button" class="formula-btn" data-type="append" data-val="k+">အခွေပူး(k+)</button>
+
+                <button type="button" class="formula-btn" data-type="replace" data-val="pw">ပါဝါ(pw)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="nk">နက္ခတ်(nk)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="br">ညီကို(br)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="++">အပူး(++)</button>
+                
+                <button type="button" class="formula-btn" data-type="replace" data-val="ss">စုံစုံ(ss)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="mm">မမ(mm)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="sm">စုံမ(sm)</button>
+                <button type="button" class="formula-btn" data-type="replace" data-val="ms">မစုံ(ms)</button>
+
+                <button type="button" class="formula-btn span-full" data-type="replace" data-val="mu">မူး (mu) - 0 ပါသောဂဏန်းအားလုံး</button>
+            </div>
+
+            <form id="entryForm">
+                <div class="grid-row" style="align-items: flex-end;">
+                    <div class="form-group" style="flex: 2;"><label>ဂဏန်း / ဖော်မြူလာ</label><input type="text" id="betNum" class="input-lg" autocomplete="off" placeholder="ဂဏန်းရိုက်ပါ"></div>
+                    <div class="form-group" style="flex: 2;"><label>ပမာဏ</label><input type="text" id="betAmt" class="input-lg" autocomplete="off" placeholder="ပမာဏ"></div>
+                    <div class="form-group" style="flex: 1; min-width: 100%;"><button type="submit" class="btn-enter">Enter စာရင်းသွင်းမည်</button></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>📊 စာရင်းချုပ်</span>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-box btn-box-blue" id="btnExpEntries">📷 ပုံထုတ်မည်</button>
+                    <button class="btn-box btn-box-red" id="btnClearAll">🗑️ ရှင်းမည်</button>
+                </div>
+            </div>
+            
+            <div id="exportEntriesArea" class="export-area">
+                <div id="entriesHeaderInfo" style="display: none; text-align: center; margin-bottom: 12px; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; position: relative; z-index: 2;"></div>
+                
+                <div class="table-responsive-wrapper">
+                    <div class="table-responsive" id="entriesTableWrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="col-num">ဂဏန်း</th>
+                                    <th class="col-total">စုစုပေါင်း</th>
+                                    <th class="col-detail">အသေးစိတ်မှတ်တမ်း</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entriesTableBody"></tbody>
+                            <tfoot id="entriesTableFoot" class="hidden">
+                                <tr class="footer-row">
+                                    <td class="text-blue">စုစုပေါင်း</td>
+                                    <td id="grandTotalAmt" class="text-red">0</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <button id="btnScrollBottom" class="floating-scroll-btn hidden" data-html2canvas-ignore>
+                        <span style="font-size: 1.1rem;">⬇️</span> အောက်သို့ဆင်းမည်
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🛡️ လစ်မစ် & အပြင်ကာစနစ်</div>
+            <div class="grid-row" style="align-items: flex-end;">
+                <div class="form-group"><label>လစ်မစ်သတ်မှတ်ရန်</label><input type="number" id="headLimit" min="0" class="input-lg" placeholder="ပမာဏ"></div>
+                <div class="form-group"><button type="button" class="btn-enter" id="btnCheckLimit" style="background: var(--text-dark); box-shadow: none;">စစ်ဆေးမည်</button></div>
+            </div>
+
+            <div style="margin-top: 16px; padding: 16px; background: #F8FAFC; border-radius: 14px; border: 1px dashed #CBD5E1;">
+                <label style="display: block; margin-bottom: 8px; color: var(--primary);">စိတ်ကြိုက် Manual ကာရန်</label>
+                <div class="grid-row" style="margin-bottom: 0; align-items: flex-end;">
+                    <div class="form-group"><input type="text" id="manualHedgeNum" placeholder="ဂဏန်း" class="input-lg" style="font-size: 1.1rem;"></div>
+                    <div class="form-group"><input type="number" id="manualHedgeAmt" placeholder="ပမာဏ" class="input-lg" style="font-size: 1.1rem;"></div>
+                    <div class="form-group"><button type="button" class="btn-box btn-box-blue" id="btnManualHedge" style="height: 48px; border-radius: 14px;">+ ကာမည်</button></div>
+                </div>
+            </div>
+
+            <div id="hedgeSection" class="hidden" style="margin-top: 20px; border-top: 2px dashed #CBD5E1; padding-top: 16px;">
+                <div style="font-weight: 800; color: var(--danger); margin-bottom: 10px;">လစ်မစ်ကျော်နေသော ဂဏန်းများ:</div>
+                <div class="table-responsive" style="max-height: 250px; border: 1px solid #E2E8F0; border-radius: 10px; overflow-y: auto; overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #F1F5F9;">
+                            <tr>
+                                <th style="padding: 10px; text-align: left; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">ဂဏန်း</th>
+                                <th style="padding: 10px; text-align: left; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">စုစုပေါင်း</th>
+                                <th style="padding: 10px; text-align: left; font-size: 0.85rem; color: var(--danger); white-space: nowrap;">ကျော်ငွေ</th>
+                                <th style="padding: 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">ကာမည့်ငွေ</th>
+                                <th style="padding: 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;">လုပ်ဆောင်ချက်</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hedgeTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="hedgedListContainer" class="hidden" style="margin-top: 16px; background: #ECFDF5; padding: 12px; border-radius: 12px; border: 1px solid #A7F3D0;">
+                <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; margin-bottom: 10px; color: #065F46;">
+                    <span>အပြင်သို့ ကာထားသော စာရင်း:</span>
+                    <span>စုစုပေါင်း: <span id="totalHedgedText" class="text-red">0</span></span>
+                </div>
+                <div id="hedgedListDisplay" class="tags-wrapper"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">💰 ငွေရှင်းတမ်း တွက်ချက်ရန်</div>
+            
+            <div class="grid-row" style="margin-bottom: 12px;">
+                <div class="form-group" style="flex: 2;"><label>ပေါက်ဂဏန်း</label><input type="text" id="winNum" class="input-lg" inputmode="numeric" placeholder=""></div>
+                <div class="form-group" style="flex: 1;"><label>ပေါက်ကြေး (အဆ)</label><input type="number" id="multiplier" min="0" class="input-lg" value="80"></div>
+                <div class="form-group" style="flex: 1;"><label>ကော်မရှင် (%)</label><input type="number" id="commRate" min="0" class="input-lg" placeholder="0"></div>
+            </div>
+            
+            <div class="grid-row" style="margin-bottom: 20px; align-items: center; background: #F8FAFC; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0;">
+                <div class="form-group" style="flex: 1; flex-direction: row; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="chkIncludeHedge" checked>
+                    <label for="chkIncludeHedge" style="color: var(--text-dark); margin: 0; cursor: pointer; font-size: 0.95rem;">အပြင်ကာထားငွေများကို စာရင်းတွင် ထည့်တွက်မည်</label>
+                </div>
+            </div>
+
+            <div class="grid-row" style="margin-bottom: 20px; align-items: center; background: #F8FAFC; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0;">
+                <div class="form-group" style="flex: 1; flex-direction: row; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="chkHasShare">
+                    <label for="chkHasShare" style="color: var(--text-dark); margin: 0; cursor: pointer; font-size: 0.95rem;">ရှယ်ယာရှင် ဝေစုခွဲမည် (Option)</label>
+                </div>
+                <div class="form-group hidden" id="shareInputGroup" style="flex: 1;">
+                    <input type="number" id="shareRate" min="0" placeholder="ရှယ်ယာ %" class="input-lg" style="padding: 8px;">
+                </div>
+            </div>
+
+            <button id="btnCalcFinal" class="btn-enter" style="background: linear-gradient(135deg, var(--success), #059669); box-shadow: 0 8px 15px rgba(16, 185, 129, 0.25);">ငွေရှင်းတမ်း တွက်မည်</button>
+            
+            <div id="slipArea" class="export-area hidden slip-area">
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #CBD5E1; padding-bottom: 16px;">
+                    <h3 style="font-size: 1.35rem; font-weight: 900; color: var(--text-dark); text-transform: uppercase; letter-spacing: 1px;">ငွေရှင်းတမ်း</h3>
+                    <p style="margin-top:6px; font-size: 1.05rem;"><strong id="outAgent" style="color: var(--primary);"></strong><br><span id="outDate" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 700;"></span></p>
+                </div>
+                
+                <div class="slip-row">
+                    <span class="slip-label">ရောင်းရငွေ စုစုပေါင်း</span>
+                    <span class="slip-value"><input type="text" id="outSales" class="receipt-input" value="0"></span>
+                </div>
+                <div class="slip-row">
+                    <span class="slip-label">ကော်မရှင် <span id="commDetail" style="font-size:0.8rem; color:var(--primary);">(0%)</span></span>
+                    <span class="slip-value"><input type="text" id="outComm" class="receipt-input" value="0"></span>
+                </div>
+                <div class="slip-row bold">
+                    <span>ကော်မရှင်နုတ်ပြီး ကျန်ငွေ</span>
+                    <span id="outNet" class="text-blue">0</span>
+                </div>
+                
+                <div class="slip-row" style="margin-top: 8px;">
+                    <span class="slip-label text-red">လျော်ငွေ <br><span id="payoutDetail" style="font-size: 0.8rem; font-weight: 800;">(0 × 80ဆ)</span></span>
+                    <span class="slip-value" style="width: 45%;"><input type="text" id="outPayout" class="receipt-input text-red" value="0"></span>
+                </div>
+                
+                <div class="slip-row bold">
+                    <span>ရှင်းရန်ငွေ</span>
+                    <span id="outAgentBal">0</span>
+                </div>
+
+                <div id="rowHedgeCost" class="slip-row hidden text-red">
+                    <span class="slip-label">အပြင်တင်ငွေ (ကာကြေး)</span>
+                    <span class="slip-value" id="sysHedgeCost">0</span>
+                </div>
+                <div id="rowHedgeWin" class="slip-row hidden text-green">
+                    <span class="slip-label">အပြင်ကာ လျော်ငွေရရှိမှု</span>
+                    <span class="slip-value" id="sysHedgeWin">0</span>
+                </div>
+                
+                <div class="slip-row final">
+                    <span>အသားတင် ကျန်ငွေ</span>
+                    <span id="sysFinalBal">0</span>
+                </div>
+                
+                <div id="rowShare" class="slip-row hidden" style="margin-top: 8px;">
+                    <span class="slip-label">ရှယ်ယာခွဲဝေငွေ <span id="shareDetailText" style="font-size: 0.8rem; font-weight: 800;">(0%)</span></span>
+                    <span class="slip-value" style="width: 45%;"><input type="text" id="outShareAmt" class="receipt-input" value="0"></span>
+                </div>
+                <div id="rowNetAfterShare" class="slip-row bold hidden" style="border-top: 2px dashed #CBD5E1; color: var(--primary); padding-top: 16px;">
+                    <span>ရှယ်ယာနုတ်ပြီး ကျန်ငွေ</span>
+                    <span id="sysNetAfterShare">0</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 16px;">
+                <button id="btnExportSlip" class="btn-box hidden" style="width: 100%; border: 2px solid var(--primary); color: var(--primary); padding: 14px; font-size: 1.1rem; font-weight: 900; border-radius: 14px; background: #EEF2FF;">📷 ဘောင်ချာ ပုံထုတ်မည်</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            "use strict";
+
+            // --- Database Module ---
+            class DatabaseService {
+                #db;
+                constructor() {
+                    this.#db = new Dexie("App2D_ProDB_V11");
+                    this.#db.version(1).stores({
+                        entries: "++id, number, amount, date, batchId",
+                        hedges: "++id, number, amount, date",
+                        logs: "++id, action, title, details, summary, timestamp, batchId"
+                    });
+                }
+                async addMultipleEntries(entries) { return await this.#db.entries.bulkAdd(entries); }
+                async deleteEntry(id) { return await this.#db.entries.delete(id); }
+                async deleteByBatchId(batchId) { 
+                    const entries = await this.#db.entries.filter(e => e.batchId === batchId).toArray();
+                    const ids = entries.map(e => e.id);
+                    await this.#db.entries.bulkDelete(ids);
+                }
+                async getAllEntries() { return await this.#db.entries.toArray(); }
+                async addLog(log) { return await this.#db.logs.add(log); }
+                async deleteLog(id) { return await this.#db.logs.delete(id); }
+                async getAllLogs() { return await this.#db.logs.orderBy('id').reverse().toArray(); }
+                async saveHedge(hedge) { return await this.#db.hedges.add(hedge); }
+                async deleteHedge(id) { return await this.#db.hedges.delete(id); }
+                async getAllHedges() { return await this.#db.hedges.toArray(); }
+                async clearAllData() { return await Promise.all([this.#db.entries.clear(), this.#db.hedges.clear(), this.#db.logs.clear()]); }
+            }
+
+            // --- UI Helper Module ---
+            class DOMHelper {
+                static get(id) { return document.getElementById(id); }
+                static val(id) { return this.get(id)?.value.trim() || ''; }
+                static num(id) { return parseFloat(this.val(id)) || 0; }
+                static setVal(id, value) { const el = this.get(id); if(el) el.value = value; }
+                static text(id, txt) { const el = this.get(id); if(el) el.innerText = txt; }
+                static html(id, htmlString) { const el = this.get(id); if(el) el.innerHTML = htmlString; }
+                static show(id) { this.get(id)?.classList.remove('hidden'); }
+                static hide(id) { this.get(id)?.classList.add('hidden'); }
+                static formatObj(num) { return new Intl.NumberFormat('en-US').format(num); }
+            }
+
+            // --- Smart Parser Core Logic for Pure Formulas ---
+            class SmartParser {
+                static parse(input) {
+                    const rawParts = input.toLowerCase().split(/[,\s.-]+/).filter(Boolean);
+                    let finalNumbers = []; 
+                    for (const part of rawParts) {
+                        const nums = this.parseSingle(part);
+                        if (nums.length > 0) finalNumbers.push(...nums); 
+                    }
+                    return finalNumbers;
+                }
+            
+                static parseSingle(str) {
+                    let numbers = [];
+                    const htMatch = str.match(/^(\d)(ထိပ်|ရှေ့|h)$/);
+                    if (htMatch) { const n = htMatch[1]; for(let i=0; i<=9; i++) numbers.push(`${n}${i}`); return numbers; }
+                    
+                    const nkMatch = str.match(/^(\d)(နောက်|n|t)$/);
+                    if (nkMatch) { const n = nkMatch[1]; for(let i=0; i<=9; i++) numbers.push(`${i}${n}`); return numbers; }
+                    
+                    const brkMatch = str.match(/^(\d+)(ဘရိတ်|b|bkk)$/);
+                    if (brkMatch) {
+                        const bList = brkMatch[1].split('');
+                        for(const bChar of bList) {
+                            const b = parseInt(bChar, 10);
+                            for (let i = 0; i <= 9; i++) {
+                                for (let j = 0; j <= 9; j++) { if ((i + j) % 10 === b) numbers.push(`${i}${j}`); }
+                            }
+                        }
+                        return numbers;
+                    }
+
+                    if (str === 'ပါဝါ' || str === 'pw') return ['05', '50', '16', '61', '27', '72', '38', '83', '49', '94'];
+                    if (str === 'နက္ခတ်' || str === 'nk') return ['07', '70', '18', '81', '24', '42', '35', '53', '69', '96'];
+                    if (str === 'ညီအစ်ကို' || str === 'ညီကို' || str === 'br') return ['01','10', '12','21', '23','32', '34','43', '45','54', '56','65', '67','76', '78','87', '89','98', '90','09'];
+                    if (str === 'အပူး' || str === '++' || str === 'dd') { for (let i = 0; i <= 9; i++) numbers.push(`${i}${i}`); return numbers; }
+                    if (str === 'စုံစုံ' || str === 'ss') { for (let i of [0,2,4,6,8]) for (let j of [0,2,4,6,8]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str === 'မမ' || str === 'mm') { for (let i of [1,3,5,7,9]) for (let j of [1,3,5,7,9]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str === 'စုံမ' || str === 'sm') { for (let i of [0,2,4,6,8]) for (let j of [1,3,5,7,9]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str === 'မစုံ' || str === 'ms') { for (let i of [1,3,5,7,9]) for (let j of [0,2,4,6,8]) numbers.push(`${i}${j}`); return numbers; }
+                    if (str === 'မူး' || str === 'mu') { const temp = new Set(); for (let i = 0; i <= 9; i++) { temp.add(`0${i}`); temp.add(`${i}0`); } return Array.from(temp); }
+                    
+                    const patMatch = str.match(/^(\d)(ပတ်|အပတ်|\/|p)(18|19|20)?$/);
+                    if (patMatch) {
+                        const n = patMatch[1]; 
+                        const mode = patMatch[3] ? patMatch[3] : '19'; 
+                        let tempArr = [];
+                        for (let i = 0; i <= 9; i++) { if (i.toString() !== n) { tempArr.push(`${n}${i}`); tempArr.push(`${i}${n}`); } }
+                        if (mode === '19') tempArr.push(`${n}${n}`);
+                        else if (mode === '20') { tempArr.push(`${n}${n}`); tempArr.push(`${n}${n}`); }
+                        return tempArr;
+                    }
+                    
+                    const khweMatch = str.match(/^(\d{2,})(အခွေ|ခွေ|\*|k)(.*)$/);
+                    if (khweMatch) {
+                        const digits = khweMatch[1].split(''); 
+                        const incD = khweMatch[3].includes('+');
+                        const temp = new Set();
+                        for (let i = 0; i < digits.length; i++) {
+                            for (let j = 0; j < digits.length; j++) { 
+                                if (i !== j) temp.add(digits[i] + digits[j]); 
+                                if (i === j && incD) temp.add(digits[i] + digits[i]); 
+                            }
+                        }
+                        return Array.from(temp);
+                    }
+                    
+                    return []; 
+                }
+            }
+
+            // --- Main Application Controller ---
+            class AppController {
+                #dbService;
+                #lastBatchDetails = null;
+
+                constructor() {
+                    this.#dbService = new DatabaseService();
+                    this.#setInitialState();
+                    this.#initEventListeners();
+                    this.#initReceiptAdjustments();
+                }
+
+                #setInitialState() {
+                    const now = new Date();
+                    const hours = now.getHours();
+                    DOMHelper.setVal('sysDate', now.toISOString().split('T')[0]);
+                    DOMHelper.setVal('roundTime', hours < 12 ? 'မနက်ပိုင်း' : 'ညနေပိုင်း');
+
+                    const savedState = localStorage.getItem('App2D_FormState_ProV11');
+                    if (savedState) {
+                        const s = JSON.parse(savedState);
+                        DOMHelper.setVal('agentName', s.agentName || '');
+                        DOMHelper.setVal('commRate', s.commRate || '');
+                        DOMHelper.setVal('multiplier', s.multiplier || '80');
+                        DOMHelper.setVal('winNum', s.winNum || '');
+                        DOMHelper.setVal('shareRate', s.shareRate || '');
+                        DOMHelper.setVal('headLimit', s.headLimit || '');
+                        if(s.hasShare) {
+                            DOMHelper.get('chkHasShare').checked = true;
+                            DOMHelper.show('shareInputGroup');
+                        }
+                        if(s.includeHedge === false) {
+                            DOMHelper.get('chkIncludeHedge').checked = false;
+                        }
+                    }
+                    this.#refreshUI();
+                }
+
+                #saveFormState() {
+                    const state = {
+                        agentName: DOMHelper.val('agentName'),
+                        commRate: DOMHelper.val('commRate'),
+                        multiplier: DOMHelper.val('multiplier'),
+                        sysDate: DOMHelper.val('sysDate'),
+                        roundTime: DOMHelper.val('roundTime'),
+                        winNum: DOMHelper.val('winNum'),
+                        shareRate: DOMHelper.val('shareRate'),
+                        headLimit: DOMHelper.val('headLimit'),
+                        hasShare: DOMHelper.get('chkHasShare').checked,
+                        includeHedge: DOMHelper.get('chkIncludeHedge').checked
+                    };
+                    localStorage.setItem('App2D_FormState_ProV11', JSON.stringify(state));
+                }
+
+                #initEventListeners() {
+                    DOMHelper.get('btnOpenHelp')?.addEventListener('click', () => DOMHelper.get('helpModal').classList.add('active'));
+                    DOMHelper.get('btnCloseHelp')?.addEventListener('click', () => DOMHelper.get('helpModal').classList.remove('active'));
+
+                    const inputsToSave = ['agentName', 'commRate', 'multiplier', 'sysDate', 'roundTime', 'shareRate', 'headLimit', 'winNum', 'chkHasShare', 'chkIncludeHedge'];
+                    inputsToSave.forEach(id => {
+                        const el = DOMHelper.get(id);
+                        if (el) {
+                            el.addEventListener('change', () => this.#saveFormState());
+                            if(el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number')) {
+                                el.addEventListener('input', () => this.#saveFormState());
+                            }
+                        }
+                    });
+
+                    DOMHelper.get('chkHasShare')?.addEventListener('change', (e) => {
+                        if(e.target.checked) DOMHelper.show('shareInputGroup');
+                        else DOMHelper.hide('shareInputGroup');
+                    });
+
+                    DOMHelper.get('entryForm')?.addEventListener('submit', (e) => this.#handleFormSubmit(e));
+                    
+                    DOMHelper.get('formulaButtons')?.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.formula-btn');
+                        if (!btn) return;
+                        const numInput = DOMHelper.get('betNum');
+                        const amtInput = DOMHelper.get('betAmt');
+                        
+                        if (btn.dataset.type === 'append') {
+                            numInput.value += btn.dataset.val;
+                            numInput.focus();
+                        } else {
+                            numInput.value = btn.dataset.val; 
+                            amtInput.focus();
+                        }
+                    });
+
+                    DOMHelper.get('btnClearAll')?.addEventListener('click', () => this.#handleClearAll());
+                    DOMHelper.get('btnCheckLimit')?.addEventListener('click', () => this.#checkLimits());
+                    DOMHelper.get('btnManualHedge')?.addEventListener('click', () => this.#handleManualHedge());
+                    DOMHelper.get('btnCalcFinal')?.addEventListener('click', () => this.#calculateFinalLedger());
+                    DOMHelper.get('btnExpEntries')?.addEventListener('click', () => this.#exportAsImage('entries'));
+                    DOMHelper.get('btnExportSlip')?.addEventListener('click', () => this.#exportAsImage('slip'));
+
+                    ['shareRate', 'chkIncludeHedge'].forEach(id => {
+                        DOMHelper.get(id)?.addEventListener('input', () => {
+                            if (!DOMHelper.get('slipArea').classList.contains('hidden')) this.#calculateFinalLedger();
+                        });
+                    });
+
+                    const wrap = DOMHelper.get('entriesTableWrap');
+                    DOMHelper.get('btnScrollBottom')?.addEventListener('click', () => {
+                        wrap.scrollTo({ top: wrap.scrollHeight, behavior: 'smooth' });
+                    });
+                    
+                    wrap.addEventListener('scroll', () => {
+                        const isScrollable = wrap.scrollHeight > wrap.clientHeight;
+                        const isAtBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 20;
+                        if (isScrollable && !isAtBottom && wrap.scrollTop > 10) DOMHelper.show('btnScrollBottom');
+                        else DOMHelper.hide('btnScrollBottom');
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        const delEntryBtn = e.target.closest('.del-cross:not(.del-hedge)');
+                        const saveHedgeBtn = e.target.closest('.save-hedge-btn');
+                        const delHedgeBtn = e.target.closest('.del-hedge');
+                        const logDelBtn = e.target.closest('.btn-log-del');
+                        const logUndoBtn = e.target.closest('.btn-log-undo');
+                        
+                        if (delEntryBtn) this.#handleDeleteEntry(Number(delEntryBtn.dataset.id));
+                        if (saveHedgeBtn) this.#handleSaveHedgeLimit(saveHedgeBtn.dataset.num);
+                        if (delHedgeBtn) this.#handleDeleteHedge(Number(delHedgeBtn.dataset.id));
+                        
+                        if (logDelBtn) this.#handleUndoBatch(Number(logDelBtn.dataset.batch), Number(logDelBtn.dataset.logid), false);
+                        if (logUndoBtn) this.#handleUndoBatch(Number(logUndoBtn.dataset.batch), Number(logUndoBtn.dataset.logid), true);
+                    });
+                }
+
+                #initReceiptAdjustments() {
+                    const inputs = ['outSales', 'outComm', 'outPayout', 'outShareAmt']; 
+                    inputs.forEach(id => {
+                        const el = DOMHelper.get(id);
+                        if(el) {
+                            el.addEventListener('input', () => this.#recalculateReceipt());
+                            el.addEventListener('blur', (e) => { e.target.value = DOMHelper.formatObj(this.#parseAmt(e.target.value)); });
+                            el.addEventListener('focus', (e) => { e.target.value = this.#parseAmt(e.target.value) || ''; });
+                        }
+                    });
+                }
+
+                #parseAmt(val) { return val ? (parseFloat(val.toString().replace(/,/g, '')) || 0) : 0; }
+                
+                #toEngNum(str) {
+                    const mmNums = { '၀':'0', '၁':'1', '၂':'2', '၃':'3', '၄':'4', '၅':'5', '၆':'6', '၇':'7', '၈':'8', '၉':'9' };
+                    return str.replace(/[၀-၉]/g, m => mmNums[m]);
+                }
+
+                async #handleFormSubmit(e) {
+                    e.preventDefault();
+                    
+                    const rawNumInput = DOMHelper.val('betNum');
+                    const rawAmtInput = DOMHelper.val('betAmt');
+                    
+                    const rawNum = this.#toEngNum(rawNumInput);
+                    const rawAmt = this.#toEngNum(rawAmtInput);
+
+                    const cleanNumStr = rawNum.toLowerCase().trim();
+                    const cleanAmtStr = rawAmt.replace(/,/g, '').replace(/\s+/g, '').toLowerCase();
+
+                    if (!cleanNumStr || !cleanAmtStr) return alert("ဂဏန်းနှင့် ပမာဏကို ပြည့်စုံစွာ ဖြည့်စွက်ပါ။");
+
+                    if (/[^0-9r\s]/i.test(cleanAmtStr)) {
+                        return alert("အမှား - ငွေပမာဏကွက်တွင် ဂဏန်း၊ 'r' နှင့် ကွက်လပ် (Space) မှလွဲ၍ အခြားစာသားများ မပါရပါ။");
+                    }
+                    if (cleanNumStr.replace(/br/g, '').includes('r')) {
+                        return alert("အမှား - ဂဏန်း နှင့် ငွေပမာဏ ရိုက်ထည့်သည့်ကွက် မှားယွင်းနေပါသည်။ (ဂဏန်းကွက်တွင် r မသုံးရပါ)");
+                    }
+
+                    const hasFormula = /[a-z+*\/]/i.test(cleanNumStr);
+                    let entries = [];
+                    const dateVal = DOMHelper.val('sysDate');
+                    const batchId = Date.now();
+
+                    if (hasFormula) {
+                        if (/\s|\./.test(cleanNumStr)) return alert("အမှား - ဖော်မြူလာများကို တွဲရိုက်၍မရပါ။ တစ်ကြိမ်လျှင် တစ်ခုသာ သုံးပါ။");
+                        if (cleanAmtStr.includes('r')) return alert("အမှား - ဖော်မြူလာတွင် 'r' တွဲသုံး၍မရပါ။ ရိုးရိုးပမာဏ (ဥပမာ - 500) သာ ရိုက်ထည့်ပါ။");
+
+                        const straightAmt = parseInt(cleanAmtStr, 10);
+                        if (isNaN(straightAmt) || straightAmt <= 0) return alert("ငွေပမာဏသည် သုည (0) ထက် ကြီးရပါမည်။");
+                        
+                        const parsedNums = SmartParser.parse(cleanNumStr);
+                        if (parsedNums.length === 0) return alert("ဖော်မြူလာဂဏန်း အမှားပါဝင်နေပါသည်။");
+                        
+                        for (const n of parsedNums) {
+                            entries.push({ number: n, amount: straightAmt, date: dateVal, batchId });
+                        }
+                    } else {
+                        let straightAmt = 0;
+                        let reverseAmt = 0;
+                        
+                        const amtMatchr250 = cleanAmtStr.match(/^(\d+)r(\d+)$/);
+                        const amtMatchr = cleanAmtStr.match(/^(\d+)r$/);
+                        const amtMatchPure = cleanAmtStr.match(/^(\d+)$/);
+                        
+                        if (amtMatchr250) {
+                            straightAmt = parseInt(amtMatchr250[1], 10) || 0;
+                            reverseAmt = parseInt(amtMatchr250[2], 10) || 0;
+                        } else if (amtMatchr) {
+                            straightAmt = parseInt(amtMatchr[1], 10) || 0;
+                            reverseAmt = straightAmt;
+                        } else if (amtMatchPure) {
+                            straightAmt = parseInt(amtMatchPure[1], 10) || 0;
+                        } else {
+                            return alert("အမှား - ငွေပမာဏ ရိုက်သွင်းမှုပုံစံ မှားယွင်းနေပါသည်။ (ဥပမာ: 500, 500r, 500 r 250)");
+                        }
+                        
+                        if (straightAmt <= 0 && reverseAmt <= 0) return alert("ပမာဏ မှားယွင်းနေပါသည်။");
+                        
+                        const numTokens = cleanNumStr.split(/[,\s.-]+/).filter(Boolean);
+                        if (numTokens.length === 0) return alert("ဂဏန်း ထည့်သွင်းထားခြင်း မရှိပါ။");
+                        
+                        // Exact match for manual - duplicate inputs are stored as duplicate entries.
+                        for (const token of numTokens) {
+                            if (!/^\d{2}$/.test(token)) {
+                                return alert(`အမှား - [${token}] နေရာတွင် ၃ လုံးတွဲ (သို့) ၁ လုံးတည်းသော ဂဏန်း ပါဝင်နေပါသည်။ ၂ လုံးတွဲဂဏန်းများကိုသာ Space ခြား၍ ထည့်ပါ။`);
+                            }
+                            if (straightAmt > 0) {
+                                entries.push({ number: token, amount: straightAmt, date: dateVal, batchId });
+                            }
+                            if (reverseAmt > 0) {
+                                const revNum = token[1] + token[0];
+                                entries.push({ number: revNum, amount: reverseAmt, date: dateVal, batchId });
+                            }
+                        }
+                    }
+
+                    try {
+                        await this.#dbService.addMultipleEntries(entries);
+                        
+                        const exactNums = hasFormula 
+                            ? Array.from(new Set(entries.map(e => e.number))).sort().join(', ')
+                            : entries.map(e => e.number).join(', '); 
+                            
+                        const batchTotal = entries.reduce((sum, e) => sum + e.amount, 0);
+                        
+                        const logTitle = `[${rawNumInput}] ~ ${rawAmtInput}`;
+                        const logDetails = `[${exactNums}]`;
+                        const logSummary = `${entries.length} ကွက် | စုစုပေါင်း: ${DOMHelper.formatObj(batchTotal)}`;
+                        
+                        await this.#dbService.addLog({ action: 'add', title: logTitle, details: logDetails, summary: logSummary, timestamp: new Date().toLocaleTimeString(), batchId });
+                        
+                        this.#lastBatchDetails = { exactNums: exactNums, totalAmt: batchTotal, count: entries.length, batchId };
+
+                        DOMHelper.setVal('betNum', ''); 
+                        DOMHelper.setVal('betAmt', ''); 
+                        DOMHelper.get('betNum').focus();
+                        DOMHelper.hide('hedgeSection');
+                        
+                        await this.#refreshUI();
+                        const wrap = DOMHelper.get('entriesTableWrap');
+                        setTimeout(() => wrap.scrollTo({ top: wrap.scrollHeight, behavior: 'smooth' }), 100);
+
+                    } catch (error) { 
+                        alert("ဒေတာသိမ်းဆည်းရာတွင် အမှားအယွင်းဖြစ်ပေါ်ခဲ့ပါသည်။"); 
+                    }
+                }
+
+                async #handleUndoBatch(batchId, logId, isUndo) {
+                    const msg = isUndo ? "နောက်ဆုံးသွင်းထားသော စာရင်းကို ပြန်ဆုတ် (Undo) ရန် သေချာပါသလား?" : "ဤလုပ်ဆောင်ချက်မှတ်တမ်းကို စာရင်းမှ ဖယ်ရှားရန် သေချာပါသလား?";
+                    if (confirm(msg)) {
+                        try {
+                            await this.#dbService.deleteByBatchId(batchId);
+                            await this.#dbService.deleteLog(logId);
+                            await this.#refreshUI();
+                        } catch (e) { alert("ဖယ်ရှားရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်။");}
+                    }
+                }
+
+                async #handleDeleteEntry(id) { 
+                    if(!confirm("ဤမှတ်တမ်းကို စာရင်းထဲမှ ဖျက်ရန် သေချာပါသလား?")) return;
+                    try { 
+                        await this.#dbService.deleteEntry(id); 
+                        await this.#refreshUI(); 
+                    } catch(e) {}
+                }
+
+                async #handleDeleteHedge(id) { 
+                    try { await this.#dbService.deleteHedge(id); if(!DOMHelper.get('hedgeSection').classList.contains('hidden')) await this.#checkLimits(); await this.#refreshUI(); } catch(e) {}
+                }
+
+                async #handleClearAll() {
+                    if (confirm("စာရင်းအားလုံးကို အပြီးအပိုင် ရှင်းလင်းရန် သေချာပါသလား? (မှတ်တမ်းများပါ ပျက်သွားပါမည်)")) {
+                        try {
+                            await this.#dbService.clearAllData();
+                            localStorage.removeItem('App2D_FormState_ProV11'); 
+                            ['hedgeSection', 'hedgedListContainer', 'slipArea', 'btnExportSlip'].forEach(id => DOMHelper.hide(id));
+                            DOMHelper.setVal('agentName', ''); DOMHelper.setVal('commRate', ''); DOMHelper.setVal('multiplier', '80');
+                            DOMHelper.setVal('winNum', ''); DOMHelper.setVal('shareRate', ''); DOMHelper.setVal('headLimit', '');
+                            DOMHelper.get('chkHasShare').checked = false; DOMHelper.hide('shareInputGroup');
+                            DOMHelper.get('chkIncludeHedge').checked = true;
+                            await this.#refreshUI();
+                        } catch (e) {}
+                    }
+                }
+
+                async #refreshUI() {
+                    try {
+                        const [entries, hedges, logs] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges(), this.#dbService.getAllLogs()]);
+                        
+                        const logContainer = DOMHelper.get('logsContainer');
+                        if (logs.length > 0) {
+                            logContainer.innerHTML = logs.map((log, index) => {
+                                const isLatest = index === 0;
+                                const actionBtn = isLatest 
+                                    ? `<button class="btn-log-undo" data-batch="${log.batchId}" data-logid="${log.id}">↩️ Undo (ဖျက်မည်)</button>`
+                                    : `<button class="btn-box btn-box-red btn-log-del" data-batch="${log.batchId}" data-logid="${log.id}">✖ ဖျက်မည်</button>`;
+                                
+                                return `
+                                <div class="log-item ${log.action}">
+                                    <div class="log-header">
+                                        <span class="log-title">${log.title}</span>
+                                        <span class="log-time">${log.timestamp}</span>
+                                    </div>
+                                    <div class="log-details">${log.details}</div>
+                                    <div class="log-summary">
+                                        <span>${log.summary}</span>
+                                        ${actionBtn}
+                                    </div>
+                                </div>`;
+                            }).join('');
+                        } else {
+                            logContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #94A3B8; font-weight: bold; font-size: 1rem;">မှတ်တမ်း မရှိသေးပါ</div>';
+                        }
+                        
+                        let grandTotalAmt = 0;
+                        const groupedEntries = entries.reduce((acc, curr) => {
+                            acc[curr.number] ??= { total: 0, details: [] };
+                            acc[curr.number].total += curr.amount;
+                            acc[curr.number].details.push(curr);
+                            grandTotalAmt += curr.amount;
+                            return acc;
+                        }, {});
+
+                        const rowsHTML = Object.keys(groupedEntries).sort().map(num => {
+                            const group = groupedEntries[num];
+                            const tags = group.details.map(d => `
+                                <div class="detail-tag">${DOMHelper.formatObj(d.amount)} <button class="del-cross hide-on-export" data-html2canvas-ignore data-id="${d.id}">✖</button></div>
+                            `).join('');
+                            
+                            return `<tr>
+                                <td class="col-num">${num}</td>
+                                <td class="col-total">${DOMHelper.formatObj(group.total)}</td>
+                                <td class="col-detail"><div class="tags-wrapper">${tags}</div></td>
+                            </tr>`;
+                        }).join('');
+                        
+                        DOMHelper.html('entriesTableBody', rowsHTML);
+                        DOMHelper.text('grandTotalAmt', DOMHelper.formatObj(grandTotalAmt));
+                        grandTotalAmt !== 0 ? DOMHelper.show('entriesTableFoot') : DOMHelper.hide('entriesTableFoot');
+
+                        const totalHedgedAmt = hedges.reduce((sum, h) => sum + h.amount, 0);
+                        const hedgeHTML = hedges.map(h => `<div class="detail-tag" style="background:#ECFDF5; color:#059669; border-color:#A7F3D0;">${h.number} - ${DOMHelper.formatObj(h.amount)} <button class="del-cross del-hedge hide-on-export" data-html2canvas-ignore data-id="${h.id}">✖</button></div>`).join('');
+                        DOMHelper.text('totalHedgedText', DOMHelper.formatObj(totalHedgedAmt));
+                        DOMHelper.html('hedgedListDisplay', hedgeHTML || "<span style='color:var(--text-muted);'>-</span>");
+                        if(hedges.length > 0) DOMHelper.show('hedgedListContainer');
+                        else DOMHelper.hide('hedgedListContainer');
+                        
+                        const wrap = DOMHelper.get('entriesTableWrap');
+                        if (wrap.scrollHeight > wrap.clientHeight && wrap.scrollTop < (wrap.scrollHeight - wrap.clientHeight - 20)) {
+                            DOMHelper.show('btnScrollBottom');
+                        } else {
+                            DOMHelper.hide('btnScrollBottom');
+                        }
+                        
+                    } catch (e) {}
+                }
+
+                async #checkLimits() {
+                    const limit = DOMHelper.num('headLimit');
+                    if (limit <= 0) return;
+                    try {
+                        const [entries, hedges] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges()]);
+                        const grossGrouped = entries.reduce((acc, curr) => { acc[curr.number] = (acc[curr.number] || 0) + curr.amount; return acc; }, {});
+                        const hedgedGrouped = hedges.reduce((acc, curr) => { acc[curr.number] = (acc[curr.number] || 0) + curr.amount; return acc; }, {});
+
+                        let hasOverLimit = false;
+                        const limitRowsHTML = Object.entries(grossGrouped).sort(([a], [b]) => a.localeCompare(b)).map(([num, total]) => {
+                            const overAmt = (total - (hedgedGrouped[num] || 0)) - limit;
+                            if (overAmt > 0) {
+                                hasOverLimit = true;
+                                return `<tr style="border-bottom: 1px solid #E2E8F0;">
+                                    <td class="col-num" style="padding: 8px;">${num}</td>
+                                    <td style="padding: 8px; font-weight: 800; font-size: 1rem; color: var(--text-dark);">${DOMHelper.formatObj(total)}</td>
+                                    <td class="text-red" style="padding: 8px; font-weight: 800; font-size: 1rem;">${DOMHelper.formatObj(overAmt)}</td>
+                                    <td style="padding: 8px;"><input type="number" id="h_inp_${num}" class="receipt-input" style="width:70px; text-align:center; padding: 6px !important; font-size: 1rem;" value="${overAmt}"></td>
+                                    <td style="padding: 8px; text-align: center;"><button class="btn-box save-hedge-btn" data-num="${num}" style="padding: 6px 12px; color: white; background: var(--primary); border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">ကာမည်</button></td>
+                                </tr>`;
+                            } return '';
+                        }).join('');
+
+                        DOMHelper.html('hedgeTableBody', limitRowsHTML);
+                        if (hasOverLimit) DOMHelper.show('hedgeSection');
+                        else { DOMHelper.hide('hedgeSection'); alert("လစ်မစ်ကျော်သည့် ဂဏန်း မရှိပါ။"); }
+                    } catch (e) {}
+                }
+
+                async #handleSaveHedgeLimit(num) {
+                    const amt = DOMHelper.num(`h_inp_${num}`);
+                    if (amt > 0) {
+                        try { await this.#dbService.saveHedge({ number: num, amount: amt, date: DOMHelper.val('sysDate') }); await this.#checkLimits(); await this.#refreshUI(); } catch(e) {}
+                    }
+                }
+
+                async #handleManualHedge() {
+                    const numInput = DOMHelper.val('manualHedgeNum');
+                    const amt = DOMHelper.num('manualHedgeAmt');
+                    
+                    if (!numInput || amt <= 0) return alert("ကာမည့် ဂဏန်းနှင့် ပမာဏကို ပြည့်စုံစွာ ထည့်ပါ။");
+                    const cleanNum = this.#toEngNum(numInput).replace(/\s+/g, '');
+                    if (!/^\d{2}$/.test(cleanNum)) return alert("ကာမည့်ဂဏန်းသည် ၂ လုံးဂဏန်းဖြစ်ရပါမည်။");
+
+                    try { 
+                        await this.#dbService.saveHedge({ number: cleanNum, amount: amt, date: DOMHelper.val('sysDate') }); 
+                        DOMHelper.setVal('manualHedgeNum', ''); DOMHelper.setVal('manualHedgeAmt', '');
+                        if(!DOMHelper.get('hedgeSection').classList.contains('hidden')) await this.#checkLimits(); 
+                        await this.#refreshUI(); 
+                    } catch(e) {}
+                }
+
+                async #calculateFinalLedger() {
+                    const agent = DOMHelper.val('agentName') || "အမည်မသိ";
+                    const winNum = DOMHelper.val('winNum');
+                    const mul = DOMHelper.num('multiplier') || 80;
+                    const commRate = DOMHelper.num('commRate') || 0;
+                    
+                    const includeHedge = DOMHelper.get('chkIncludeHedge').checked;
+                    const hasShare = DOMHelper.get('chkHasShare').checked;
+                    const shareRate = hasShare ? (DOMHelper.num('shareRate') || 0) : 0;
+
+                    try {
+                        const [entries, hedges] = await Promise.all([this.#dbService.getAllEntries(), this.#dbService.getAllHedges()]);
+
+                        const aSales = entries.reduce((sum, e) => sum + e.amount, 0);
+                        const aComm = Math.round(aSales * (commRate / 100));
+                        
+                        let totalWinAmt = 0;
+                        if(winNum) {
+                            const winEntries = entries.filter(e => e.number === winNum);
+                            totalWinAmt = winEntries.reduce((sum, e) => sum + e.amount, 0);
+                        }
+                        const aPayout = Math.round(totalWinAmt * mul);
+
+                        const sysCost = includeHedge ? hedges.reduce((sum, h) => sum + h.amount, 0) : 0;
+                        const sysWin = (includeHedge && winNum) ? Math.round(hedges.filter(h => h.number === winNum).reduce((sum, h) => sum + h.amount, 0) * mul) : 0;
+
+                        const preFinalBal = (aSales - aComm) - aPayout - sysCost + sysWin;
+                        const initialShareAmt = Math.round(preFinalBal * (shareRate / 100));
+
+                        DOMHelper.text('outAgent', agent);
+                        DOMHelper.text('outDate', `${DOMHelper.val('sysDate')} (${DOMHelper.val('roundTime')})`);
+                        
+                        DOMHelper.setVal('outSales', DOMHelper.formatObj(aSales));
+                        DOMHelper.text('commDetail', `(${commRate}%)`);
+                        DOMHelper.setVal('outComm', DOMHelper.formatObj(aComm));
+                        
+                        DOMHelper.html('payoutDetail', `(${DOMHelper.formatObj(totalWinAmt)} × ${mul}ဆ)`);
+                        DOMHelper.setVal('outPayout', DOMHelper.formatObj(aPayout));
+
+                        DOMHelper.text('sysHedgeCost', DOMHelper.formatObj(sysCost));
+                        DOMHelper.text('sysHedgeWin', DOMHelper.formatObj(sysWin));
+                        
+                        DOMHelper.setVal('outShareAmt', DOMHelper.formatObj(initialShareAmt));
+                        
+                        if (preFinalBal < 0) {
+                            DOMHelper.text('shareDetailText', `(${shareRate}% အရှုံးဝေစု)`);
+                            DOMHelper.get('outShareAmt').style.color = "var(--danger)";
+                        } else {
+                            DOMHelper.text('shareDetailText', `(${shareRate}%)`);
+                            DOMHelper.get('outShareAmt').style.color = "var(--text-dark)";
+                        }
+
+                        if (includeHedge && (sysCost > 0 || sysWin > 0)) { DOMHelper.show('rowHedgeCost'); DOMHelper.show('rowHedgeWin'); } 
+                        else { DOMHelper.hide('rowHedgeCost'); DOMHelper.hide('rowHedgeWin'); }
+                        
+                        this.#recalculateReceipt();
+                        DOMHelper.show('slipArea'); 
+                        DOMHelper.show('btnExportSlip');
+                    } catch (e) {}
+                }
+
+                #recalculateReceipt() {
+                    const sales = this.#parseAmt(DOMHelper.val('outSales'));
+                    const comm = this.#parseAmt(DOMHelper.val('outComm'));
+                    const payout = this.#parseAmt(DOMHelper.val('outPayout'));
+                    
+                    const includeHedge = DOMHelper.get('chkIncludeHedge').checked;
+                    const hCost = includeHedge ? this.#parseAmt(DOMHelper.get('sysHedgeCost')?.innerText) : 0;
+                    const hWin = includeHedge ? this.#parseAmt(DOMHelper.get('sysHedgeWin')?.innerText) : 0;
+                    
+                    const net = sales - comm;
+                    const agentBal = net - payout;
+                    const finalBal = agentBal - hCost + hWin;
+
+                    DOMHelper.text('outNet', DOMHelper.formatObj(net));
+                    DOMHelper.text('outAgentBal', DOMHelper.formatObj(agentBal));
+                    
+                    const elAgentBal = DOMHelper.get('outAgentBal');
+                    if(elAgentBal) elAgentBal.style.color = agentBal >= 0 ? "var(--success)" : "var(--danger)";
+                    
+                    DOMHelper.text('sysFinalBal', DOMHelper.formatObj(finalBal));
+                    const elSysFinal = DOMHelper.get('sysFinalBal');
+                    if(elSysFinal) elSysFinal.style.color = finalBal >= 0 ? "var(--success)" : "var(--danger)";
+
+                    const manualShareAmt = this.#parseAmt(DOMHelper.val('outShareAmt'));
+                    const netAfterShare = finalBal - manualShareAmt;
+                    const hasShare = DOMHelper.get('chkHasShare').checked;
+
+                    if (hasShare || manualShareAmt !== 0) {
+                        DOMHelper.show('rowShare');
+                        DOMHelper.show('rowNetAfterShare');
+                        DOMHelper.text('sysNetAfterShare', DOMHelper.formatObj(netAfterShare));
+                        
+                        const elNetAfter = DOMHelper.get('sysNetAfterShare');
+                        if(elNetAfter) {
+                            elNetAfter.style.color = netAfterShare >= 0 ? "var(--primary)" : "var(--danger)";
+                        }
+                        
+                        const elShareAmt = DOMHelper.get('outShareAmt');
+                        if(elShareAmt) {
+                            elShareAmt.style.color = manualShareAmt < 0 ? "var(--danger)" : "var(--text-dark)";
+                        }
+                    } else {
+                        DOMHelper.hide('rowShare');
+                        DOMHelper.hide('rowNetAfterShare');
+                    }
+                }
+
+                async #exportAsImage(type) {
+                    const agent = DOMHelper.val('agentName') || "အမည်မသိ";
+                    const originalArea = type === 'slip' ? DOMHelper.get('slipArea') : DOMHelper.get('exportEntriesArea');
+                    const btn = type === 'slip' ? DOMHelper.get('btnExportSlip') : DOMHelper.get('btnExpEntries');
+                    const originalBtnText = btn.innerHTML;
+
+                    try {
+                        btn.innerHTML = '⏳ ပုံထုတ်နေပါသည်...';
+                        btn.style.opacity = '0.7';
+                        btn.style.pointerEvents = 'none';
+
+                        await document.fonts.ready;
+                        await new Promise(r => setTimeout(r, 50)); 
+
+                        const exportContainer = document.createElement('div');
+                        exportContainer.style.position = 'absolute';
+                        exportContainer.style.left = '-9999px'; 
+                        exportContainer.style.top = '0';
+                        exportContainer.style.width = originalArea.offsetWidth + 'px'; 
+                        exportContainer.style.background = '#ffffff';
+                        exportContainer.style.zIndex = '-1000';
+                        
+                        const clone = originalArea.cloneNode(true);
+                        clone.classList.add('exporting');
+                        
+                        const originalInputs = originalArea.querySelectorAll('input');
+                        const cloneInputs = clone.querySelectorAll('input');
+                        originalInputs.forEach((inp, i) => {
+                            if (cloneInputs[i]) cloneInputs[i].setAttribute('value', inp.value);
+                        });
+
+                        clone.querySelectorAll('[data-html2canvas-ignore]').forEach(el => el.remove());
+
+                        if (type === 'entries') {
+                            const hdr = clone.querySelector('#entriesHeaderInfo');
+                            if(hdr) { 
+                                hdr.innerHTML = `<div style="font-size: 1.4rem; font-weight: 900; color: var(--primary); font-family: var(--font-main);">${agent} (စာရင်းချုပ်)</div> <div style="font-size:0.95rem; color:var(--text-muted); margin-top: 5px; font-weight:bold;">${DOMHelper.val('sysDate')} (${DOMHelper.val('roundTime')})</div>`; 
+                                hdr.style.display = 'block'; 
+                            }
+                            clone.style.padding = '16px'; 
+                            clone.style.border = 'none';
+                        }
+
+                        exportContainer.appendChild(clone);
+                        document.body.appendChild(exportContainer);
+
+                        await new Promise(r => setTimeout(r, 150));
+
+                        const dataUrl = await htmlToImage.toPng(clone, { backgroundColor: '#ffffff', pixelRatio: 2 });
+                        
+                        const link = document.createElement('a'); 
+                        link.href = dataUrl;
+                        link.download = `${agent === "အမည်မသိ" ? "Unknown" : agent}_${type === 'slip' ? 'Receipt' : 'Ledger'}_${DOMHelper.val('sysDate')}.png`; 
+                        link.click();
+
+                        document.body.removeChild(exportContainer);
+
+                    } catch (err) { 
+                        alert("ပုံထုတ်ရာတွင် အမှားအယွင်းဖြစ်ပေါ်ခဲ့ပါသည်။ စာရင်းများလွန်းပါက ဖုန်း Memory ကြောင့် ကြာတတ်ပါသည်။"); 
+                    } finally {
+                        btn.innerHTML = originalBtnText;
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                    }
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', () => new AppController());
+        })();
+    </script>
+</body>
+</html>
